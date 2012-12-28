@@ -19,12 +19,6 @@
 /*--------------------------------------------------------------------------------*
  * Object creation functions
  *--------------------------------------------------------------------------------*/
-var popup2 = new Popup();
-popup2.autoHide = false;
-popup2.content = 'This DIV will not close automatically!<br><br><a href="#" onclick="'+popup2.ref+'.hide();return false;">Click here to close</a>';
-popup2.width=200;
-popup2.height=200;
-popup2.style = {'border':'3px solid black','backgroundColor':'yellow'};
 
 /*--------------------------------------------------------------------------------*
  * job
@@ -189,34 +183,80 @@ var default_job_list 	= [{text:'root',owner:null,next_job:null,hotspot:default_h
 default_hotspot.job		= default_job_list[0];
 
 /*--------------------------------------------------------------------------------*
+ * The buttons for the popups
+ *--------------------------------------------------------------------------------*/
+var button_text = new Array();
+button_text['cancel'] = 'Cancel';
+button_text['subitem'] = 'Add Sub-Job';
+button_text['parallel'] = 'Add Parallel Job';
+button_text['previous'] = 'Add Dependent Job';
+button_text['after'] = 'Insert Dependancy Job';
+button_text['delete'] = 'Delete Job';
+
+/*--------------------------------------------------------------------------------*
  * The functions that handle the Pertt Chart.
  *--------------------------------------------------------------------------------*/
-function showPopup(event, text)
+function createButton(type)
 {
-	var el, x, y;
+	return '<div class="popup_button rounded_bottom rounded_top shadow" onClick="hidePopup(\'' + type + '\');">' + button_text[type] +'</div>';
+}
 
-	el = document.getElementById('PopUp');
+/*--------------------------------------------------------------------------------*
+ * hidePopup
+ *
+ * This function will show the display the popup on the screen. This function will
+ * select the inner page from the type parameter.
+ *
+ * parameters:
+ * 	type	This is the type of pop-up that is to be displayed.
+ * 	hotspot	This is the item that was selected that caused to popup to occur.
+ *--------------------------------------------------------------------------------*/
+function hidePopup(type)
+{
+	console.debug("button type: " + type);
+	element = document.getElementById('popup');
+	element.style.display = "none";
+}
 	
-	if (window.event)
+/*--------------------------------------------------------------------------------*
+ * showPopup
+ *
+ * This function will show the display the popup on the screen. This function will
+ * select the inner page from the type parameter.
+ *
+ * parameters:
+ * 	type	This is the type of pop-up that is to be displayed.
+ * 	hotspot	This is the item that was selected that caused to popup to occur.
+ *--------------------------------------------------------------------------------*/
+function showPopup(type, hotspot)
+{
+	var element, x, y, width, height;
+
+	/* the popup that is in the html */
+	element = document.getElementById('popup');
+	
+	element.style.left = (hotspot.x + hotspot.width + 10) + "px";
+	element.style.top = (hotspot.y + 10) + "px";
+
+	switch(type)
 	{
-		x = window.event.clientX + document.documentElement.scrollLeft + document.body.scrollLeft;
-		y = window.event.clientY + document.documentElement.scrollTop + document.body.scrollTop;
+		case 'select':	html_text = "test text";
+						html_text += createButton('subitem');
+						html_text += createButton('previous');
+						html_text += createButton('parallel');
+						html_text += createButton('previous');
+						html_text += createButton('after');
+						html_text += createButton('delete');
+						
+						break
+
+		default:		html_text = "INTERNAL ERROR: unknown popup type";
 	}
-	else
-	{
-		x = event.clientX + window.scrollX;
-		y = event.clientY + window.scrollY;
-	}
+	
+	html_text += createButton('cancel');
 
-	x -= 2; 
-	y -= 2;
-	y = y+15;
-
-	el.style.left = x + "px";
-	el.style.top = y + "px";
-	el.style.display = "block";
-
-	document.getElementById('PopUpText').innerHTML = text;
+	element.innerHTML = html_text;
+	element.style.display = "block";
 }
 
 /*--------------------------------------------------------------------------------*
@@ -226,17 +266,14 @@ function showPopup(event, text)
  *--------------------------------------------------------------------------------*/
 function touchListenerFunction(e)
 {
-	console.debug("click X: " + e.clientX + " Y: " + e.clientY);
-	
 	for (index=0; index < hotspot_list.length; index++)
 	{
-		console.debug("hot x: " + hotspot_list[index].x + " Y: " + hotspot_list[index].y);
-		console.debug("item: " + (hotspot_list[index].x + hotspot_list[index].width ) + " y:" + (hotspot_list[index].y + hotspot_list[index].height));
 		if (((hotspot_list[index].x < e.clientX) && (e.clientX < (hotspot_list[index].x + hotspot_list[index].width))) &&
 		    ((hotspot_list[index].y < e.clientY) && (e.clientY < (hotspot_list[index].y + hotspot_list[index].height))))
 		{
 			console.debug("y ok");
-			Popup.showModal('modal',null,null,{'screenColor':'#99ff99','screenOpacity':.6});
+			showPopup('select',hotspot_list[index]);
+			break;
 		}
 	}
 }

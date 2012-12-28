@@ -1,0 +1,72 @@
+/*--------------------------------------------------------------------------------*
+ *  ,-----.                 ,--.    ,--.     ,----. ,--.                    ,--.  
+ *  |  .-. | ,---. ,--.--.,-'  '-.,-'  '-.  '  .-./ |  '--. ,---.-.,--.--.,-'  '-.
+ *  |  '-' || .-. :|  .--''-.  .-''-.  .-'  |  |  _ |  .  ||  .-. ||  .--''-.  .-'
+ *  |  |--' \   --.|  |     |  |    |  |    '  '-' ||  |  |'  '-' ||  |     |  |  
+ *  `--'     `----'`--'     `--'    `--'     `----' `--'--' `---'-'`--'     `--'  
+ *    file: perttchart.css
+ *    desc: This file holds the CSS styles for the pertt chart tool.
+ *
+ *  author: Peter Antoine
+ *    date: 28/12/2012 10:24:56
+ *--------------------------------------------------------------------------------*
+ *                     Copyright (c) 2012 Peter Antoine
+ *                            All rights Reserved.
+ *                    Released Under the Artistic Licence
+ *--------------------------------------------------------------------------------*/
+
+.shadow
+{
+	-moz-box-shadow: 3px 3px 4px gray;
+	-webkit-box-shadow: 3px 3px 4px gray;
+	box-shadow: 3px 3px 4px gray;
+	-ms-filter: "progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='gray')"; /* For IE 8 */
+	filter: progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='gray');		 /* For IE 5.5 - 7 */
+}
+
+.rounded_top
+{
+	-moz-border-radius-topleft: 10px; /* future proofing */
+	-moz-border-radius-topright: 10px; /* future proofing */
+	border-top-left-radius: 10px; /* future proofing */
+	border-top-right-radius: 10px; /* future proofing */
+}
+
+.rounded_bottom
+{
+	-moz-border-radius-bottomleft: 10px; /* future proofing */
+	-moz-border-radius-bottomright: 10px; /* future proofing */
+	border-bottom-left-radius: 10px; /* future proofing */
+	border-bottom-right-radius: 10px; /* future proofing */
+}
+
+.popup
+{
+	padding-left:	10px;
+	padding-right:	10px;
+	padding-top:	5px;
+	padding-bottom:	5px;
+	border:			3px #C0C0C0 solid;
+	text-align:		center;
+	display:		none;
+	position:		absolute;
+	font: 			normal bold large Arial, Helvetica, sans-serif;
+	background:		#909090;
+	color:			#4C4C9B;
+}
+
+.popup_button
+{
+	border:			2px #C0C0C0 solid;
+	padding-left:	5px;
+	padding-right:	5px;
+	display:		block;
+	font: 			normal bold medium Arial, Helvetica, sans-serif;
+	margin-bottom:	1px;
+}
+
+.popup_button:hover
+{
+	background:		#C0C0C0;
+}
+
