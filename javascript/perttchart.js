@@ -51,13 +51,13 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 		if (box_height > enclosing_hotspot.height)
 			enclosing_hotspot.height = box_height;
 	
-		enclosing_hotspot.height += 100;
-		enclosing_hotspot.width += this.hotspot.width + DP_BOX_TOTAL_SPACING + 100;
+		enclosing_hotspot.height += box_height;
+		enclosing_hotspot.width += this.hotspot.width + DP_BOX_TOTAL_SPACING;
 	}
 	else
 	{
 		/* ok, we have sub-jobs calc the size based on this */
-		for (index=0; index < this.streams.length; index++)
+		for (var index=0; index < this.streams.length; index++)
 		{
 			/* re-initialise the container hotspot */
 			this.hotspots[index].x		= 0;
@@ -68,17 +68,19 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			this.hotspots[index].owner	= this;
 
 			/* now walk down the list of boxes per level */
-			box = this.streams[index];
+			var box = this.streams[index];
+
 			while (box != null)
 			{
 				/* create the enclosing box */
 				box.calculateBoxSize(context,this.hotspots[index]);
-				box = box.nextBox();
+				var temp = box.getNextJob();
+				box = temp;
 			}
 
 			/* add to the size of the enclosing box */
-			enclosing_hotspot.height += this.hotspots[index].height;
-			enclosing_hotspot.width  += this.hotspots[index].width;
+			enclosing_hotspot.height += this.hotspots[index].height + DP_BOX_TOTAL_SPACING;
+			enclosing_hotspot.width  += this.hotspots[index].width + DP_BOX_TOTAL_SPACING;
 		}
 	}
 
@@ -98,26 +100,34 @@ function job_paint(context,x,y)
 	
 		/* this is a leaf item, needs to be added to hotspot list so it can be selected */
 		hotspot_list.push(this.hotspot);
+
+		console.debug("paint: " + this.hotspot.job.text);
 	}
 	else
 	{
 		/* var, all items are drawn inside my area box */
 		var my_x = x;
 		var my_y = y;
+		
+		console.debug("paint: " + this.hotspot.job.text + " -> ");
 
 		/* ok, we have sub-jobs calc the size based on this */
-		for (index=0; index < this.streams.length; index++)
+		for (var index=0; index < this.streams.length; index++)
 		{
+			console.debug("line %d\n",index);
+
 			/* now walk down the list of boxes per level */
-			box = this.streams[index];
+			var box = this.streams[index];
+
 			while (box != null)
 			{
+				console.debug("box\n");
 				/* paint the box */
 				box.paint(context,x,y);
 
 				/* increment the offset and do next */
-				x += box.hotspot.width + DP_BOX_SPACING;
-				box = box.nextBox();
+				x += box.hotspot.width + DP_BOX_TOTAL_SPACING;
+				box = box.getNextJob();
 			}
 		}
 
@@ -126,13 +136,30 @@ function job_paint(context,x,y)
 	}
 }
 
-function job(name,owner,next_job,hotspot,layout_only)
+function job_addNextJob(job)
+{
+	job.next_obj = this.next_obj;
+	this.next_obj = job;
+}
+
+function job_addSubJob(job)
+{
+	this.streams.push(job);
+	this.hotspots.push(new Hotspot(0,0,0,0,this,false));
+}
+
+function job_getNextJob()
+{
+	return this.next_obj;
+}
+
+function Job(name)
 {
 	/* set the standard items */
 	this.text		= name;
-	this.owner		= owner;
-	this.next_obj	= next_job;
-	this.hotspot	= hotspot;
+	this.owner		= null;
+	this.next_obj	= null;
+	this.hotspot	= null;
 
 	/* set the sub-items that the job have to have */
 	this.streams	= [];
@@ -142,10 +169,56 @@ function job(name,owner,next_job,hotspot,layout_only)
 
 	/* add the methods to the object */
 	this.paint				= job_paint;
-	this.addHotSpot			= job_AddHotSpot;
+	this.addSubJob			= job_addSubJob;
+	this.addNextJob			= job_addNextJob;
+	this.addHotSpot			= job_addHotSpot;
+	this.getNextJob			= job_getNextJob;
 	this.calculateBoxSize	= job_calculateBoxSize;
 }
 
+/*--------------------------------------------------------------------------------*
+ * createJob
+ * This function will create the job, it will also create the hotspot for the job
+ * and add it to the hotspot list.
+ *
+ * hotspot		The id of the hotspot that is attached to the owner of the new job.
+ * name			The name of the new job.
+ * description	The description of the new job.
+ * parameter	This is a parameter that informs what sort of item to create.
+ *--------------------------------------------------------------------------------*/
+function createJob(hotspot, name, description, parameter)
+{
+	var owner = null;
+	var new_job = new Job(name);
+	var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
+
+	new_job.addHotSpot(new_hotspot);
+
+	
+	console.debug("done some " + hotspot + " name " + name + " description: " + description + " parameter " + parameter);
+
+
+	switch(parameter)
+	{
+		case 'subitem': 
+				new_job.owner = hotspot_list[hotspot].job;
+				hotspot_list[hotspot].job.addSubJob(new_job);
+				break;
+
+		case 'after':
+				new_job.owner = hotspot_list[hotspot].job.owner;
+				hotspot_list[hotspot].job.addNextJob(new_job);
+				break;
+
+		case 'previous':
+				new_job.owner = hotspot_list[hotspot].job.owner;
+				hotspot_list[hotspot].job.addNextJob(new_job);
+				break;
+	}
+
+	repaint('test_1');
+}
+		
 /*--------------------------------------------------------------------------------*
  * hotspot
  * This object type is the hotspot on the screen that the click or touch will
@@ -159,14 +232,14 @@ function job(name,owner,next_job,hotspot,layout_only)
  * width	This is the width of the hotspot.
  * owner	This is the job that owns the hotspot.
  *--------------------------------------------------------------------------------*/
-function hotspot(x,y,width,height,owner)
+function Hotspot(x,y,width,height,owner,active)
 {
 	this.x		= x;
 	this.y		= y;
 	this.width	= width;
 	this.height	= height;
-	this.active	= true;
-	this.owner	= job;
+	this.active	= active;
+	this.job	= owner;
 }
 
 /*--------------------------------------------------------------------------------*
@@ -174,9 +247,11 @@ function hotspot(x,y,width,height,owner)
  *--------------------------------------------------------------------------------*/
 var job_list;
 var hotspot_list		= [];
-var default_hotspot		= {x:0,y:0,width:0,height:0,active:true,owner:null};
-var default_job_list 	= [{text:'root',owner:null,next_job:null,hotspot:default_hotspot,streams:[],
+var default_hotspot		= {x:0,y:0,width:0,height:0,active:true,job:null};
+var default_job_list 	= [{text:'root',owner:null,next_job:null,hotspot:default_hotspot,streams:[],hotspots:[],
 							paint:job_paint,
+							addSubJob:job_addSubJob,
+							addNextJob:job_addNextJob,
 							addHotSpot:job_addHotSpot,
 							calculateBoxSize:job_calculateBoxSize}];
 
@@ -192,30 +267,91 @@ button_text['parallel'] = 'Add Parallel Job';
 button_text['previous'] = 'Add Dependent Job';
 button_text['after'] = 'Insert Dependancy Job';
 button_text['delete'] = 'Delete Job';
+button_text['create'] = 'Create';
 
 /*--------------------------------------------------------------------------------*
  * The functions that handle the Pertt Chart.
  *--------------------------------------------------------------------------------*/
-function createButton(type)
+
+/*--------------------------------------------------------------------------------*
+ * createButton
+ *
+ * This function will create a button for the given string.
+ *
+ * parameters:
+ * 	type		This is the type of pop-up that is to be displayed.
+ * 	hotspot		The hotspot for the action that was originally created.
+ *	parameter	This is a parameter to pass into the button handler.
+ *
+ * returns:
+ *  The button text for the button that was created.
+ *
+ *--------------------------------------------------------------------------------*/
+function createButton(type,hotspot,parameter)
 {
-	return '<div class="popup_button rounded_bottom rounded_top shadow" onClick="hidePopup(\'' + type + '\');">' + button_text[type] +'</div>';
+	return '<div class="popup_button rounded_bottom rounded_top shadow" onClick="actionButtonPress(\'' + type + '\', ' + hotspot + ',\'' + parameter + '\');">' + button_text[type] +'</div>';
 }
 
 /*--------------------------------------------------------------------------------*
- * hidePopup
+ * createTextBox
  *
- * This function will show the display the popup on the screen. This function will
- * select the inner page from the type parameter.
+ * This function will create a named text box.
+ *
+ * parameters:
+ * 	id			The id of the text box.
+ * 	name		The name of the text box, this will be used for the label.
+ * 	width		The number of characters allowed in the text box.
+ * 	max_length	The max number of characters in the string.
+ *
+ * returns:
+ *  The text for the text box that was created.
+ *--------------------------------------------------------------------------------*/
+function createTextBox(id, name, width, max_length)
+{
+	return '<div class="popup_input rounded_bottom rounded_top shadow"> ' + name + ': <input class="popup_null" id="' + id + '" type="text" size="' + width + '" maxlength="' + max_length + '"/></div>';
+}
+
+/*--------------------------------------------------------------------------------*
+ * createTextArea
+ *
+ * This function will create a named text area.
+ *
+ * parameters:
+ * 	id		The id of the text box.
+ * 	name	The name of the text box, this will be used for the label.
+ * 	columns	The width of the text box.
+ *
+ * returns:
+ *  The text for the text area.
+ *--------------------------------------------------------------------------------*/
+function createTextArea(id, name, columns)
+{
+	return '<div class="popup_input rounded_bottom rounded_top shadow"><label class="popup_null">' + name + ': </label><textarea class="popup_null" id="' + id + '" cols="' + columns + '"></textarea></div>';
+}
+
+/*--------------------------------------------------------------------------------*
+ * actionButtonPress
+ *
+ * This function will handle the button press and action the key push.
  *
  * parameters:
  * 	type	This is the type of pop-up that is to be displayed.
- * 	hotspot	This is the item that was selected that caused to popup to occur.
  *--------------------------------------------------------------------------------*/
-function hidePopup(type)
+function actionButtonPress(type,hotspot,parameter)
 {
-	console.debug("button type: " + type);
+	/* remove old window */
 	element = document.getElementById('popup');
 	element.style.display = "none";
+
+	/* now handle the action on the new window */
+	switch(type)
+	{
+		case 'after':
+		case 'parallel':
+		case 'previous':
+		case 'subitem':		showPopup(type, hotspot); 																							break;
+		case 'create':		createJob(hotspot,document.getElementById('name').value,document.getElementById('description').value,parameter);	break;
+	}
 }
 	
 /*--------------------------------------------------------------------------------*
@@ -226,7 +362,7 @@ function hidePopup(type)
  *
  * parameters:
  * 	type	This is the type of pop-up that is to be displayed.
- * 	hotspot	This is the item that was selected that caused to popup to occur.
+ * 	hotspot	This is the index number of the hotspot.
  *--------------------------------------------------------------------------------*/
 function showPopup(type, hotspot)
 {
@@ -235,25 +371,40 @@ function showPopup(type, hotspot)
 	/* the popup that is in the html */
 	element = document.getElementById('popup');
 	
-	element.style.left = (hotspot.x + hotspot.width + 10) + "px";
-	element.style.top = (hotspot.y + 10) + "px";
+	element.style.left = (hotspot_list[hotspot].x + hotspot_list[hotspot].width + 10) + "px";
+	element.style.top = (hotspot_list[hotspot].y + 10) + "px";
 
 	switch(type)
 	{
-		case 'select':	html_text = "test text";
-						html_text += createButton('subitem');
-						html_text += createButton('previous');
-						html_text += createButton('parallel');
-						html_text += createButton('previous');
-						html_text += createButton('after');
-						html_text += createButton('delete');
-						
-						break
+		/* basic click/touch on an element */
+		case 'select':	html_text = "amend: " + hotspot_list[hotspot].job.text + "<p>";
+						html_text += createButton('subitem',hotspot,0);
+						html_text += createButton('parallel',hotspot,0);
+						html_text += createButton('previous',hotspot,0);
+						html_text += createButton('after',hotspot,0);
+						html_text += createButton('delete',hotspot,0);
+						break;
+
+		case 'subitem':	html_text = "new sub-item: " + hotspot_list[hotspot].job.text + "<p>";
+						html_text += createTextBox('name','Name',80,120);
+						html_text += createTextArea('description','Description',80);
+						html_text += createButton('create',hotspot,type);
+						break;
+
+		case 'after':
+		case 'parallel':
+		case 'previous':
+						html_text = "new: " + hotspot_list[hotspot].job.text + "<p>";
+						html_text += createTextBox('name','Name',80,120);
+						html_text += createTextArea('description','Description',80);
+						html_text += createButton('create',hotspot,type);
+						break;
+
 
 		default:		html_text = "INTERNAL ERROR: unknown popup type";
 	}
 	
-	html_text += createButton('cancel');
+	html_text += createButton('cancel',hotspot);
 
 	element.innerHTML = html_text;
 	element.style.display = "block";
@@ -266,13 +417,16 @@ function showPopup(type, hotspot)
  *--------------------------------------------------------------------------------*/
 function touchListenerFunction(e)
 {
-	for (index=0; index < hotspot_list.length; index++)
+	/* need to adjust the pointer to the canvas */
+	var mouse_x = e.clientX - e.target.offsetLeft;
+	var mouse_y = e.clientY - e.target.offsetTop;
+
+	for (var index=0; index < hotspot_list.length; index++)
 	{
-		if (((hotspot_list[index].x < e.clientX) && (e.clientX < (hotspot_list[index].x + hotspot_list[index].width))) &&
-		    ((hotspot_list[index].y < e.clientY) && (e.clientY < (hotspot_list[index].y + hotspot_list[index].height))))
+		if (((hotspot_list[index].x <= mouse_x) && (mouse_x <= (hotspot_list[index].x + hotspot_list[index].width))) &&
+		    ((hotspot_list[index].y <= mouse_y) && (mouse_y <= (hotspot_list[index].y + hotspot_list[index].height))))
 		{
-			console.debug("y ok");
-			showPopup('select',hotspot_list[index]);
+			showPopup('select',index);
 			break;
 		}
 	}
@@ -326,7 +480,7 @@ function initialise(canvas_id)
  * parameters:
  * 	canvas_id	The ID of the job list canvas to redraw.
  *--------------------------------------------------------------------------------*/
-function repaint(canva_id)
+function repaint(canvas_id)
 {
 	var canvas  = document.getElementById(canvas_id);
 	
@@ -342,6 +496,9 @@ function repaint(canva_id)
 			/* set the canvas size to that of the toplevel box - note this also clears the canvas */
 			canvas.width	= job_list[0].hotspot.width + 400;
 			canvas.height	= job_list[0].hotspot.height + 400;
+			
+			/* TODO: remove debug */
+			job_list[0].calculateBoxSize(context,job_list[0]);
 
 			/* now render the job_list */
 			job_list[0].paint(context,0,0);

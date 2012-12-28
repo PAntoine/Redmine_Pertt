@@ -24,7 +24,7 @@ var DP_BOX_HEIGHT			= DP_BOX_TOTAL_SPACING + DP_FONT_SIZE_PX;
 
 function DP_getBoxSize(context,item)
 {
-	item.hotspot.width	= context.measureText(item.text).width + DP_BOX_TOTAL_SPACING * 2;
+	item.hotspot.width	= context.measureText(item.text).width + DP_BOX_TOTAL_SPACING;
 	item.hotspot.height = DP_BOX_HEIGHT + DP_BOX_TOTAL_SPACING;
 }
 
@@ -272,8 +272,8 @@ function DP_drawTextBox(context,x,y,text)
 
 	// Draw some rectangles.
 	x_pos = x;
-	context.fillRect  (x_pos,   y, DP_BOX_TOTAL_SPACING + text_length, DP_BOX_TOTAL_SPACING + 10);
-	context.strokeRect(x_pos,   y, DP_BOX_TOTAL_SPACING + text_length, DP_BOX_TOTAL_SPACING + 10);
+	context.fillRect  (x_pos,   y, DP_BOX_TOTAL_SPACING + text_length, DP_BOX_HEIGHT);
+	context.strokeRect(x_pos,   y, DP_BOX_TOTAL_SPACING + text_length, DP_BOX_HEIGHT);
 
 	context.fillStyle   = '#000'; // black
 	context.fillText(text,x_pos+DP_BOX_SPACING,y+DP_BOX_SPACING);
