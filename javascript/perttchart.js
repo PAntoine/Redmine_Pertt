@@ -43,19 +43,23 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 {
 	if (this.streams.length == 0)
 	{
-		/* ok, leaf box, just add our own size */
-		DP_getBoxSize(context,this);
-	
-		box_height = this.hotspot.height + DP_BOX_HEIGHT;
-		
-		if (box_height > enclosing_hotspot.height)
-			enclosing_hotspot.height = box_height;
-	
-		enclosing_hotspot.height += box_height;
-		enclosing_hotspot.width += this.hotspot.width + DP_BOX_TOTAL_SPACING;
+		if (this.hotspot.active)
+		{
+			/* ok, leaf box, just add our own size */
+			DP_getBoxSize(context,this);
+
+			if (enclosing_hotspot.height < (this.hotspot.height + DP_BOX_TOTAL_SPACING))
+			{
+				enclosing_hotspot.height = this.hotspot.height + DP_BOX_TOTAL_SPACING;
+			}
+
+			enclosing_hotspot.width += this.hotspot.width + DP_BOX_TOTAL_SPACING;
+		}
 	}
 	else
 	{
+		enclosing_hotspot.height = 0;
+
 		/* ok, we have sub-jobs calc the size based on this */
 		for (var index=0; index < this.streams.length; index++)
 		{
@@ -79,8 +83,12 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			}
 
 			/* add to the size of the enclosing box */
-			enclosing_hotspot.height += this.hotspots[index].height + DP_BOX_TOTAL_SPACING;
-			enclosing_hotspot.width  += this.hotspots[index].width + DP_BOX_TOTAL_SPACING;
+			enclosing_hotspot.height += this.hotspots[index].height;
+
+			if (enclosing_hotspot.width < (this.hotspots[index].width + DP_BOX_TOTAL_SPACING))
+			{
+				enclosing_hotspot.width = this.hotspots[index].width + DP_BOX_TOTAL_SPACING;
+			}
 		}
 	}
 
@@ -100,8 +108,6 @@ function job_paint(context,x,y)
 	
 		/* this is a leaf item, needs to be added to hotspot list so it can be selected */
 		hotspot_list.push(this.hotspot);
-
-		console.debug("paint: " + this.hotspot.job.text);
 	}
 	else
 	{
@@ -109,30 +115,26 @@ function job_paint(context,x,y)
 		var my_x = x;
 		var my_y = y;
 		
-		console.debug("paint: " + this.hotspot.job.text + " -> ");
-
 		/* ok, we have sub-jobs calc the size based on this */
 		for (var index=0; index < this.streams.length; index++)
 		{
-			console.debug("line %d\n",index);
-
 			/* now walk down the list of boxes per level */
 			var box = this.streams[index];
 
 			while (box != null)
 			{
-				console.debug("box\n");
 				/* paint the box */
-				box.paint(context,x,y);
+				box.paint(context,my_x,my_y);
 
 				/* increment the offset and do next */
-				x += box.hotspot.width + DP_BOX_TOTAL_SPACING;
+				my_x += box.hotspot.width + DP_BOX_SPACING;
 				box = box.getNextJob();
 			}
-		}
 
-		/* next row */
-		y += DP_BOX_HEIGHT;
+			/* next row */
+			my_x = x;
+			my_y += this.hotspots[index].height;
+		}
 	}
 }
 
@@ -140,12 +142,19 @@ function job_addNextJob(job)
 {
 	job.next_obj = this.next_obj;
 	this.next_obj = job;
+
+	/* TODO; update the box sizes */
 }
 
 function job_addSubJob(job)
 {
 	this.streams.push(job);
 	this.hotspots.push(new Hotspot(0,0,0,0,this,false));
+
+	/* this has sub-jobs so not an active hotspot */
+	this.hotspot.active = false;
+
+	/* TODO: update the box sizes */
 }
 
 function job_getNextJob()
@@ -170,8 +179,8 @@ function Job(name)
 	/* add the methods to the object */
 	this.paint				= job_paint;
 	this.addSubJob			= job_addSubJob;
-	this.addNextJob			= job_addNextJob;
 	this.addHotSpot			= job_addHotSpot;
+	this.addNextJob			= job_addNextJob;
 	this.getNextJob			= job_getNextJob;
 	this.calculateBoxSize	= job_calculateBoxSize;
 }
@@ -193,14 +202,17 @@ function createJob(hotspot, name, description, parameter)
 	var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 
 	new_job.addHotSpot(new_hotspot);
-
 	
-	console.debug("done some " + hotspot + " name " + name + " description: " + description + " parameter " + parameter);
-
-
 	switch(parameter)
 	{
+		case 'parallel':
+				/* add parallel job to the current job */
+				new_job.owner = hotspot_list[hotspot].job.owner;
+				new_job.owner.addSubJob(new_job);
+				break;
+
 		case 'subitem': 
+				/* create a sub-job of the current one */
 				new_job.owner = hotspot_list[hotspot].job;
 				hotspot_list[hotspot].job.addSubJob(new_job);
 				break;
@@ -215,6 +227,9 @@ function createJob(hotspot, name, description, parameter)
 				hotspot_list[hotspot].job.addNextJob(new_job);
 				break;
 	}
+
+	/* add the new job to the list of jobs */
+	job_list.push(new_job);
 
 	repaint('test_1');
 }
@@ -247,15 +262,6 @@ function Hotspot(x,y,width,height,owner,active)
  *--------------------------------------------------------------------------------*/
 var job_list;
 var hotspot_list		= [];
-var default_hotspot		= {x:0,y:0,width:0,height:0,active:true,job:null};
-var default_job_list 	= [{text:'root',owner:null,next_job:null,hotspot:default_hotspot,streams:[],hotspots:[],
-							paint:job_paint,
-							addSubJob:job_addSubJob,
-							addNextJob:job_addNextJob,
-							addHotSpot:job_addHotSpot,
-							calculateBoxSize:job_calculateBoxSize}];
-
-default_hotspot.job		= default_job_list[0];
 
 /*--------------------------------------------------------------------------------*
  * The buttons for the popups
@@ -450,15 +456,26 @@ function initialise(canvas_id)
 			/* check to see if the job_list has been set, if not set it to the default */
 			if (job_list === undefined)
 			{
-				job_list = default_job_list;
+				job_list = Array();
+
+				/* create the basic project */
+				var base_job = new Job('project');
+				var new_hotspot = new Hotspot(0,0,0,0,base_job,false);
+				base_job.addHotSpot(new_hotspot);
+				job_list.push(base_job);
+
+				/* now create the initial job for the screen */
+				var new_job = new Job('make system');
+				var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
+				new_job.addHotSpot(new_hotspot);
+				job_list.push(new_job);
+				
+				new_job.owner = base_job;
+				base_job.addSubJob(new_job);
 			}
 
-			console.debug("  size:" + job_list[0].hotspot.width + " h: " + job_list[0].hotspot.height);
-
 			/* calculate the box sizes - this will need to be done once from the top level */
-			job_list[0].calculateBoxSize(context,job_list[0]);
-			
-			console.debug("a size:" + job_list[0].hotspot.width + " h: " + job_list[0].hotspot.height);
+			job_list[0].calculateBoxSize(context,job_list[0].hotspot);
 
 			/* set the canvas size to that of the toplevel box */
 			canvas.width	= job_list[0].hotspot.width;
@@ -482,7 +499,9 @@ function initialise(canvas_id)
  *--------------------------------------------------------------------------------*/
 function repaint(canvas_id)
 {
-	var canvas  = document.getElementById(canvas_id);
+	var canvas = document.getElementById(canvas_id);
+	var temp   = new Job("graph");
+	var graph  = new Hotspot(0,0,0,0,temp,false);
 	
 	if (canvas)
 	{
@@ -498,7 +517,9 @@ function repaint(canvas_id)
 			canvas.height	= job_list[0].hotspot.height + 400;
 			
 			/* TODO: remove debug */
-			job_list[0].calculateBoxSize(context,job_list[0]);
+			job_list[0].hotspot.width = 0;
+			job_list[0].hotspot.height = 0;
+			job_list[0].calculateBoxSize(context,graph);
 
 			/* now render the job_list */
 			job_list[0].paint(context,0,0);
