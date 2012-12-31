@@ -1,9 +1,9 @@
 /*--------------------------------------------------------------------------------*
- *  ,-----.                 ,--.    ,--.     ,----. ,--.                    ,--.  
- *  |  .-. | ,---. ,--.--.,-'  '-.,-'  '-.  '  .-./ |  |    ,---.-.,--.--.,-'  '-.
- *  |  '-' || .-. :|  .--''-.  .-''-.  .-'  |  |  _ |  '--.|  .-. ||  .--''-.  .-'
- *  |  |--' \   --.|  |     |  |    |  |    '  '-' ||  .  |'  '-' ||  |     |  |  
- *  `--'     `----'`--'     `--'    `--'     `----' `--'--' `---'-'`--'     `--'  
+ *  ,-----.                 ,--.    ,--.     ,----. ,--.                   ,--.  
+ *  |  .-. | ,---. ,--.--.,-'  '-.,-'  '-.  '  .-./ |  |    ,--.-.,--.--.,-'  '-.
+ *  |  '-' || .-. :|  .--''-.  .-''-.  .-'  |  |  _ |  '--.| .-. ||  .--''-.  .-'
+ *  |  |--' \   --.|  |     |  |    |  |    '  '-' ||  .  |' '-' ||  |     |  |  
+ *  `--'     `----'`--'     `--'    `--'     `----' `--'--' `--'-'`--'     `--'  
  *    file: perttchart
  *    desc: This file holds the JavaScript functions for drawing the JavaScript
  *          Pertt chart.
@@ -98,7 +98,6 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 
 	enclosing_hotspot.width += this.hotspot.width + DP_BOX_TOTAL_SPACING;
 
-
 	return this.hotspot;
 }
 
@@ -106,20 +105,17 @@ function job_paint(context,x,y)
 {
 	if (this.streams.length == 0)
 	{
-		/* ok, draw it at an offset from the enclosing box */
-		this.hotspot.y = y + DP_BOX_SPACING;
-		this.hotspot.x = x + DP_BOX_SPACING;
-
 		/* ok, leaf box, just draw it */
-		DP_drawTextBox(context,this.hotspot.x,this.hotspot.y,this.text);
+		DP_drawTextBox(context,x,y,this.text);
 	
 		/* this is a leaf item, needs to be added to hotspot list so it can be selected */
+		this.hotspot.y = y;
+		this.hotspot.x = x;
 		hotspot_list.push(this.hotspot);
 	}
 	else
 	{
 		/* var, all items are drawn inside my area box */
-		var my_x = x;
 		var my_y = y;
 		
 		console.debug(this.text + ": " +this.hotspot.width + " h: " + this.hotspot.height); 
@@ -127,6 +123,9 @@ function job_paint(context,x,y)
 		/* ok, we have sub-jobs calc the size based on this */
 		for (var index=0; index < this.streams.length; index++)
 		{
+			/* set the x-offset from the outer box */
+			var my_x = x + ((this.hotspot.width - this.hotspots[index].width) / 2);
+
 			/* now walk down the list of boxes per level */
 			var box = this.streams[index];
 		
@@ -134,16 +133,19 @@ function job_paint(context,x,y)
 
 			while (box != null)
 			{
-				/* paint the box */
-				box.paint(context,my_x,my_y);
-
 				/* increment the offset and do next */
-				my_x += box.hotspot.width + DP_BOX_SPACING;
+				my_x += DP_BOX_SPACING;
+				var box_y = my_y + ((this.hotspots[index].height - box.hotspot.height) / 2);
+
+				/* paint the box */
+				box.paint(context,my_x,box_y);
+
+				/* get next job */
+				my_x += box.hotspot.width;
 				box = box.getNextJob();
 			}
 
 			/* next row */
-			my_x = x;
 			my_y += this.hotspots[index].height;
 		}
 	}
@@ -154,7 +156,7 @@ function job_addNextJob(job)
 	job.next_obj = this.next_obj;
 	this.next_obj = job;
 
-	/* TODO; update the box sizes */
+	/* TODO: update the box sizes */
 }
 
 function job_addSubJob(job)
