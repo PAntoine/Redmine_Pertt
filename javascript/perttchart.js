@@ -47,18 +47,12 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 		{
 			/* ok, leaf box, just add our own size */
 			DP_getBoxSize(context,this);
-
-			if (enclosing_hotspot.height < (this.hotspot.height + DP_BOX_TOTAL_SPACING))
-			{
-				enclosing_hotspot.height = this.hotspot.height + DP_BOX_TOTAL_SPACING;
-			}
-
-			enclosing_hotspot.width += this.hotspot.width + DP_BOX_TOTAL_SPACING;
 		}
 	}
 	else
 	{
-		enclosing_hotspot.height = 0;
+		var height = 0;
+		var width = 0;
 
 		/* ok, we have sub-jobs calc the size based on this */
 		for (var index=0; index < this.streams.length; index++)
@@ -83,14 +77,27 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			}
 
 			/* add to the size of the enclosing box */
-			enclosing_hotspot.height += this.hotspots[index].height;
+			height += this.hotspots[index].height;
 
-			if (enclosing_hotspot.width < (this.hotspots[index].width + DP_BOX_TOTAL_SPACING))
+			if (width < (this.hotspots[index].width + DP_BOX_TOTAL_SPACING))
 			{
-				enclosing_hotspot.width = this.hotspots[index].width + DP_BOX_TOTAL_SPACING;
+				width = this.hotspots[index].width + DP_BOX_TOTAL_SPACING;
 			}
 		}
+
+		/* set the size of the current hotspot */
+		this.hotspot.width = width;
+		this.hotspot.height = height;
 	}
+
+	/* adjust the size of the enclosing hotspot */
+	if (enclosing_hotspot.height < (this.hotspot.height + DP_BOX_TOTAL_SPACING))
+	{
+		enclosing_hotspot.height = this.hotspot.height + DP_BOX_TOTAL_SPACING;
+	}
+
+	enclosing_hotspot.width += this.hotspot.width + DP_BOX_TOTAL_SPACING;
+
 
 	return this.hotspot;
 }
@@ -115,11 +122,15 @@ function job_paint(context,x,y)
 		var my_x = x;
 		var my_y = y;
 		
+		console.debug(this.text + ": " +this.hotspot.width + " h: " + this.hotspot.height); 
+
 		/* ok, we have sub-jobs calc the size based on this */
 		for (var index=0; index < this.streams.length; index++)
 		{
 			/* now walk down the list of boxes per level */
 			var box = this.streams[index];
+		
+			console.debug("row: " + index + " w: " + this.hotspots[index].width + " h: " + this.hotspots[index].height); 
 
 			while (box != null)
 			{
