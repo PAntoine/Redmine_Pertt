@@ -182,6 +182,7 @@ function Job(name)
 	this.owner		= null;
 	this.next_obj	= null;
 	this.hotspot	= null;
+	this.divisible	= true;
 
 	/* set the sub-items that the job have to have */
 	this.streams	= [];
@@ -477,14 +478,32 @@ function initialise(canvas_id)
 				base_job.addHotSpot(new_hotspot);
 				job_list.push(base_job);
 
-				/* now create the initial job for the screen */
-				var new_job = new Job('make system');
+				/* now create the start job */
+				var new_job = new Job('start');
 				var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 				new_job.addHotSpot(new_hotspot);
+				new_job.divisible = false;
 				job_list.push(new_job);
 				
 				new_job.owner = base_job;
 				base_job.addSubJob(new_job);
+
+				/* now create the "working" job */
+				var working_job = new Job('make system');
+				var new_hotspot = new Hotspot(0,0,0,0,working_job,true);
+				working_job.addHotSpot(new_hotspot);
+				working_job.owner = base_job;
+				new_job.addNextJob(working_job);
+				job_list.push(working_job);
+
+				/* now create the end job */
+				var end_job = new Job('end');
+				var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
+				end_job.addHotSpot(new_hotspot);
+				end_job.owner = base_job;
+				end_job.divisible = false;
+				working_job.addNextJob(end_job);
+				job_list.push(end_job);
 			}
 
 			/* calculate the box sizes - this will need to be done once from the top level */
