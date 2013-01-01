@@ -106,7 +106,7 @@ function job_paint(context,x,y)
 	if (this.streams.length == 0)
 	{
 		/* ok, leaf box, just draw it */
-		DP_drawTextBox(context,x,y,this.text);
+		DP_drawTextBoxRounded(context,x,y,this.text);
 	
 		/* this is a leaf item, needs to be added to hotspot list so it can be selected */
 		this.hotspot.y = y;
@@ -141,7 +141,7 @@ function job_paint(context,x,y)
 				box.paint(context,my_x,box_y);
 
 				/* get next job */
-				my_x += box.hotspot.width;
+				my_x += box.hotspot.width + DP_BOX_SPACING;
 				box = box.getNextJob();
 			}
 

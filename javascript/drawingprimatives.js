@@ -17,8 +17,10 @@
  *--------------------------------------------------------------------------------*/
 
 /* 1 pixel border and 5 pixel margin */
-var DP_BOX_SPACING			= 1 + 3;				/* space between the box and the contents */
-var DP_BOX_TOTAL_SPACING	= DP_BOX_SPACING * 2;	/* total whitespace on both sides */
+var DP_BOX_LINE_THICKNESS	= 1;											/* the size in pixels of the box thickness */
+var DP_BOX_CORNER_RADIUS	= 5;											/* the radius of the corner of the boxes */
+var DP_BOX_SPACING			= DP_BOX_LINE_THICKNESS + DP_BOX_CORNER_RADIUS;	/* space between the box and the contents */
+var DP_BOX_TOTAL_SPACING	= DP_BOX_SPACING * 2;							/* total whitespace on both sides */
 var DP_FONT_SIZE_PX			= 10;
 var DP_BOX_HEIGHT			= DP_BOX_TOTAL_SPACING + DP_FONT_SIZE_PX;
 
@@ -50,6 +52,39 @@ function DP_drawFlatArrow(context,x,y,length,pointers)
 		context.lineTo(start + (10 * point_dir),y + 4);
 		context.fill();
 	}
+}
+
+// Draw a box with rounded corners.
+// x,y is the top left corner.
+function DP_drawTextBoxRounded(context,x,y,text)
+{
+	context.textBaseline = 'middle';
+	var height = DP_BOX_HEIGHT;
+	var width  = context.measureText(text).width;
+
+	// set the colours
+	context.fillStyle   = '#fff'; // something
+	context.strokeStyle = '#000'; // black
+	context.lineWidth   = 1;
+
+	// Ok draw and fill the circle
+	context.beginPath();
+	context.arc(x + DP_BOX_CORNER_RADIUS,			y + DP_BOX_CORNER_RADIUS,DP_BOX_CORNER_RADIUS					, Math.PI		, Math.PI * 1.5	, false);
+	context.arc(x + width + DP_BOX_CORNER_RADIUS,	y + DP_BOX_CORNER_RADIUS,DP_BOX_CORNER_RADIUS					, Math.PI * 1.5	, 0				, false);
+	context.arc(x + width + DP_BOX_CORNER_RADIUS,	y + DP_FONT_SIZE_PX + DP_BOX_CORNER_RADIUS,DP_BOX_CORNER_RADIUS	, 0				, Math.PI * 0.5	, false);
+	context.arc(x + DP_BOX_CORNER_RADIUS,			y + DP_FONT_SIZE_PX + DP_BOX_CORNER_RADIUS,DP_BOX_CORNER_RADIUS	, Math.PI * 0.5	, Math.PI 		, false);
+	context.lineTo(x ,y + DP_BOX_CORNER_RADIUS);
+
+	context.shadowColor = "rgba( 0, 0, 0, 0.3 )";
+	context.shadowOffsetX = 2;
+	context.shadowOffsetY = 2;
+	context.shadowBlur = 3;
+
+	context.fill();
+	context.stroke();
+	
+	// Ok, write the text in the middle of the box
+	context.fillText(text,x+DP_BOX_CORNER_RADIUS,y+DP_FONT_SIZE_PX);
 }
 
 // The draws an arrow the lies directly on the x/y axis.
