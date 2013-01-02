@@ -540,21 +540,13 @@ function initialise(canvas_id)
 				new_job.owner = base_job;
 				base_job.addSubJob(new_job);
 
-				/* now create the "working" job */
-				var working_job = new Job('make system','main job container');
-				var new_hotspot = new Hotspot(0,0,0,0,working_job,true);
-				working_job.addHotSpot(new_hotspot);
-				working_job.owner = base_job;
-				new_job.addNextJob(working_job);
-				job_list.push(working_job);
-
 				/* now create the end job */
 				var end_job = new Job('end','end of project');
 				var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
 				end_job.addHotSpot(new_hotspot);
 				end_job.owner = base_job;
 				end_job.end = true;
-				working_job.addNextJob(end_job);
+				new_job.addNextJob(end_job);
 				job_list.push(end_job);
 			}
 
@@ -603,6 +595,16 @@ function repaint(canvas_id)
 	
 			/* now render the job_list */
 			job_list[0].paint(context,0,0);
+
+			/* TODO: debug */
+			function censor(key, value) {
+			  if (key == "job") {
+				return job_list.indexOf(value);
+			  }
+			  return value;
+			}
+
+			console.debug(JSON.stringify(hotspot_list,censor));
 		}
 	}
 }
