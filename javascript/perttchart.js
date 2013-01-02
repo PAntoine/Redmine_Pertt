@@ -143,36 +143,45 @@ function job_paint(context,x,y)
 			var my_x = x + ((this.hotspot.width - this.hotspots[index].width) / 2);
 			var stream_off_x = my_x-group_x;
 			var stream_off_y = stream_y + (this.hotspots[index].height/2);
-	
-			/* draw line from outer box middle to stream middle */
-			DP_drawBoxCurve(context,x,y+(this.hotspot.height/2),group_x,stream_off_y);
-
-			/* draw the line from the group boundary to the box boundary */
-			DP_drawStraightArrow(context,group_x,stream_off_y,stream_off_x,0,0);
 
 			/* now walk down the list of boxes per level */
 			var box = this.streams[index];
 		
+			if (!box.start)
+			{
+				/* draw line from outer box middle to stream middle */
+				DP_drawBoxCurve(context,x,y+(this.hotspot.height/2),group_x,stream_off_y);
+
+				/* draw the line from the group boundary to the box boundary */
+				DP_drawStraightArrow(context,group_x,stream_off_y,stream_off_x,0,0);
+			}
+	
 			while (box != null)
 			{
 				/* increment the offset and do next */
 				box_x = my_x + DP_BOX_SPACING;
 				var box_y = stream_y + ((this.hotspots[index].height - box.hotspot.height) / 2);
 			
-				if (box.terminal)
+				if (!box.start)
 				{
-					DP_drawStraightArrow(context,my_x,stream_off_y,box_x-my_x,0,1);
-				}
-				else
-				{
-					DP_drawStraightArrow(context,my_x,stream_off_y,box_x-my_x,0,0);
+					if (box.terminal)
+					{
+						DP_drawStraightArrow(context,my_x,stream_off_y,box_x-my_x,0,1);
+					}
+					else
+					{
+						DP_drawStraightArrow(context,my_x,stream_off_y,box_x-my_x,0,0);
+					}
 				}
 
 				/* paint the box */
 				box.paint(context,box_x,box_y);
-					
-				/* paint after arrow */
-				DP_drawStraightArrow(context,my_x+box.hotspot.width+DP_BOX_SPACING,stream_off_y,box_x-my_x,0,0);
+		
+				/* only paint the end line if it is a real box */
+				if (!box.end && box.terminal)
+				{
+					DP_drawStraightArrow(context,my_x+box.hotspot.width+DP_BOX_SPACING,stream_off_y,box_x-my_x,0,0);
+				}
 
 				/* get next job */
 				my_x += box.hotspot.width + DP_BOX_SPACING;
@@ -180,11 +189,14 @@ function job_paint(context,x,y)
 				box = box.getNextJob();
 			}
 
-			/* draw the line from the group boundary to the box boundary */
-			DP_drawStraightArrow(context,my_x,stream_off_y,stream_off_x,0,0);
+			if (!this.streams[index].start)
+			{
+				/* draw the line from the group boundary to the box boundary */
+				DP_drawStraightArrow(context,my_x,stream_off_y,stream_off_x,0,0);
 
-			/* draw line from outer box middle to stream middle */
-			DP_drawBoxCurve(context,my_x+stream_off_x,stream_off_y,x+this.hotspot.width,y+(this.hotspot.height/2));
+				/* draw line from outer box middle to stream middle */
+				DP_drawBoxCurve(context,my_x+stream_off_x,stream_off_y,x+this.hotspot.width,y+(this.hotspot.height/2));
+			}
 
 			/* next row */
 			stream_y += this.hotspots[index].height;
@@ -207,6 +219,7 @@ function job_addSubJob(job)
 
 	/* this has sub-jobs so not an active hotspot */
 	this.hotspot.active = false;
+	job.first_job = true;
 
 	this.terminal = false;
 
@@ -218,15 +231,16 @@ function job_getNextJob()
 	return this.next_obj;
 }
 
-function Job(name)
+function Job(name,description)
 {
 	/* set the standard items */
-	this.text		= name;
-	this.owner		= null;
-	this.next_obj	= null;
-	this.hotspot	= null;
-	this.divisible	= true;
-	this.terminal	= true;
+	this.text			= name;
+	this.owner			= null;
+	this.next_obj		= null;
+	this.hotspot		= null;
+	this.terminal		= true;
+	this.first_job		= false;
+	this.description	= description;
 
 	/* set the sub-items that the job have to have */
 	this.streams	= [];
@@ -256,7 +270,7 @@ function Job(name)
 function createJob(hotspot, name, description, parameter)
 {
 	var owner = null;
-	var new_job = new Job(name);
+	var new_job = new Job(name,description);
 	var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 
 	new_job.addHotSpot(new_hotspot);
@@ -424,11 +438,23 @@ function showPopup(type, hotspot)
 	{
 		/* basic click/touch on an element */
 		case 'select':	html_text = "amend: " + hotspot_list[hotspot].job.text + "<p>";
-						html_text += createButton('subitem',hotspot,0);
-						html_text += createButton('parallel',hotspot,0);
-						html_text += createButton('previous',hotspot,0);
-						html_text += createButton('after',hotspot,0);
-						html_text += createButton('delete',hotspot,0);
+						if (hotspot_list[hotspot].job.start || hotspot_list[hotspot].job.end )
+						{
+							html_text += createButton('after',hotspot,0);
+						}
+						else
+						{
+							html_text += createButton('subitem',hotspot,0);
+
+							if (hotspot_list[hotspot].job.first_job)
+							{
+								html_text += createButton('parallel',hotspot,0);
+							}
+
+							html_text += createButton('previous',hotspot,0);
+							html_text += createButton('after',hotspot,0);
+							html_text += createButton('delete',hotspot,0);
+						}
 						break;
 
 		case 'subitem':	html_text = "new sub-item: " + hotspot_list[hotspot].job.text + "<p>";
@@ -499,23 +525,23 @@ function initialise(canvas_id)
 				job_list = Array();
 
 				/* create the basic project */
-				var base_job = new Job('project');
+				var base_job = new Job('project','Project Root');
 				var new_hotspot = new Hotspot(0,0,0,0,base_job,false);
 				base_job.addHotSpot(new_hotspot);
 				job_list.push(base_job);
 
 				/* now create the start job */
-				var new_job = new Job('start');
+				var new_job = new Job('start','start');
 				var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 				new_job.addHotSpot(new_hotspot);
-				new_job.divisible = false;
+				new_job.start = true;
 				job_list.push(new_job);
 				
 				new_job.owner = base_job;
 				base_job.addSubJob(new_job);
 
 				/* now create the "working" job */
-				var working_job = new Job('make system');
+				var working_job = new Job('make system','main job container');
 				var new_hotspot = new Hotspot(0,0,0,0,working_job,true);
 				working_job.addHotSpot(new_hotspot);
 				working_job.owner = base_job;
@@ -523,11 +549,11 @@ function initialise(canvas_id)
 				job_list.push(working_job);
 
 				/* now create the end job */
-				var end_job = new Job('end');
+				var end_job = new Job('end','end of project');
 				var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
 				end_job.addHotSpot(new_hotspot);
 				end_job.owner = base_job;
-				end_job.divisible = false;
+				end_job.end = true;
 				working_job.addNextJob(end_job);
 				job_list.push(end_job);
 			}
@@ -558,8 +584,6 @@ function initialise(canvas_id)
 function repaint(canvas_id)
 {
 	var canvas = document.getElementById(canvas_id);
-	var temp   = new Job("graph");
-	var graph  = new Hotspot(0,0,0,0,temp,false);
 	
 	if (canvas)
 	{
@@ -570,15 +594,13 @@ function repaint(canvas_id)
 			/* empty the hotspot list on repaint - as the items add themselves back to the list */
 			hotspot_list.length = 0;
 
-			/* set the canvas size to that of the toplevel box - note this also clears the canvas */
-			canvas.width	= job_list[0].hotspot.width + 400;
-			canvas.height	= job_list[0].hotspot.height + 400;
-			
-			/* TODO: remove debug */
-//			job_list[0].hotspot.width = 0;
-//			job_list[0].hotspot.height = 0;
-			job_list[0].calculateBoxSize(context,graph);
+			/* re-calculate the graph size */	
+			job_list[0].calculateBoxSize(context,job_list[0].hotspot);
 
+			/* set the canvas size to that of the toplevel box - note this also clears the canvas */
+			canvas.width	= job_list[0].hotspot.width;
+			canvas.height	= job_list[0].hotspot.height;
+	
 			/* now render the job_list */
 			job_list[0].paint(context,0,0);
 		}
