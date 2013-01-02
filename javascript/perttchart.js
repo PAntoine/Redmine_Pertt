@@ -67,8 +67,8 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 	}
 	else
 	{
-		var height = 0;
 		var width = 0;
+		var height = 0;
 
 		/* ok, we have sub-jobs calc the size based on this */
 		for (var index=0; index < this.streams.length; index++)
@@ -79,18 +79,19 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			this.hotspots[index].width	= 0;
 			this.hotspots[index].height = 0;
 			this.hotspots[index].active = false;
-			this.hotspots[index].owner	= this;
 
 			/* now walk down the list of boxes per level */
-			var box = this.streams[index];
+			var job_id = this.streams[index];
 
-			while (box != null)
+
+			while (job_id != 0)
 			{
+				var box = job_list[job_id];
+			
 				/* create the enclosing box */
 				box.calculateBoxSize(context,this.hotspots[index]);
 				this.hotspots[index].width += DP_BOX_SPACING;
-				var temp = box.getNextJob();
-				box = temp;
+				var job_id = box.getNextJob();
 			}
 
 			/* add to the size of the enclosing box */
@@ -145,7 +146,8 @@ function job_paint(context,x,y)
 			var stream_off_y = stream_y + (this.hotspots[index].height/2);
 
 			/* now walk down the list of boxes per level */
-			var box = this.streams[index];
+			var job_id = this.streams[index];
+			var box = job_list[job_id];
 		
 			if (!box.start)
 			{
@@ -156,8 +158,9 @@ function job_paint(context,x,y)
 				DP_drawStraightArrow(context,group_x,stream_off_y,stream_off_x,0,0);
 			}
 	
-			while (box != null)
+			while (job_id != 0)
 			{
+				box = job_list[job_id];
 				/* increment the offset and do next */
 				box_x = my_x + DP_BOX_SPACING;
 				var box_y = stream_y + ((this.hotspots[index].height - box.hotspot.height) / 2);
@@ -186,10 +189,10 @@ function job_paint(context,x,y)
 				/* get next job */
 				my_x += box.hotspot.width + DP_BOX_SPACING;
 				
-				box = box.getNextJob();
+				job_id = box.getNextJob();
 			}
 
-			if (!this.streams[index].start)
+			if (!job_list[this.streams[index]].start)
 			{
 				/* draw the line from the group boundary to the box boundary */
 				DP_drawStraightArrow(context,my_x,stream_off_y,stream_off_x,0,0);
@@ -207,14 +210,14 @@ function job_paint(context,x,y)
 function job_addNextJob(job)
 {
 	job.next_obj = this.next_obj;
-	this.next_obj = job;
+	this.next_obj = job.id;
 
 	/* TODO: update the box sizes */
 }
 
 function job_addSubJob(job)
 {
-	this.streams.push(job);
+	this.streams.push(job.id);
 	this.hotspots.push(new Hotspot(0,0,0,0,this,false));
 
 	/* this has sub-jobs so not an active hotspot */
@@ -235,8 +238,8 @@ function Job(name,description)
 {
 	/* set the standard items */
 	this.text			= name;
-	this.owner			= null;
-	this.next_obj		= null;
+	this.owner			= 0;
+	this.next_obj		= 0;
 	this.hotspot		= null;
 	this.terminal		= true;
 	this.first_job		= false;
@@ -269,10 +272,11 @@ function Job(name,description)
  *--------------------------------------------------------------------------------*/
 function createJob(hotspot, name, description, parameter)
 {
-	var owner = null;
+	var owner = 0;
 	var new_job = new Job(name,description);
 	var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
-
+	
+	new_job.id = job_list.length;
 	new_job.addHotSpot(new_hotspot);
 	
 	switch(parameter)
@@ -280,23 +284,23 @@ function createJob(hotspot, name, description, parameter)
 		case 'parallel':
 				/* add parallel job to the current job */
 				new_job.owner = hotspot_list[hotspot].job.owner;
-				new_job.owner.addSubJob(new_job);
+				job_list[new_job.owner].addSubJob(new_job);
 				break;
 
 		case 'subitem': 
 				/* create a sub-job of the current one */
-				new_job.owner = hotspot_list[hotspot].job;
-				hotspot_list[hotspot].job.addSubJob(new_job);
+				new_job.owner = hotspot_list[hotspot].job.id;
+				job_list[hotspot_list[hotspot].job.id].addSubJob(new_job);
 				break;
 
 		case 'after':
 				new_job.owner = hotspot_list[hotspot].job.owner;
-				hotspot_list[hotspot].job.addNextJob(new_job);
+				job_list[hotspot_list[hotspot].job.id].addNextJob(new_job);
 				break;
 
 		case 'previous':
 				new_job.owner = hotspot_list[hotspot].job.owner;
-				hotspot_list[hotspot].job.addNextJob(new_job);
+				job_list[hotspot_list[hotspot].job.id].addNextJob(new_job);
 				break;
 	}
 
@@ -438,7 +442,7 @@ function showPopup(type, hotspot)
 	{
 		/* basic click/touch on an element */
 		case 'select':	html_text = "amend: " + hotspot_list[hotspot].job.text + "<p>";
-						if (hotspot_list[hotspot].job.start || hotspot_list[hotspot].job.end )
+						if (hotspot_list[hotspot].job.start)
 						{
 							html_text += createButton('after',hotspot,0);
 						}
@@ -498,7 +502,10 @@ function touchListenerFunction(e)
 		if (((hotspot_list[index].x <= mouse_x) && (mouse_x <= (hotspot_list[index].x + hotspot_list[index].width))) &&
 		    ((hotspot_list[index].y <= mouse_y) && (mouse_y <= (hotspot_list[index].y + hotspot_list[index].height))))
 		{
-			showPopup('select',index);
+			if (!hotspot_list[index].job.end)
+			{
+				showPopup('select',index);
+			}
 			break;
 		}
 	}
@@ -528,23 +535,25 @@ function initialise(canvas_id)
 				var base_job = new Job('project','Project Root');
 				var new_hotspot = new Hotspot(0,0,0,0,base_job,false);
 				base_job.addHotSpot(new_hotspot);
+				base_job.id = 0;
 				job_list.push(base_job);
 
 				/* now create the start job */
 				var new_job = new Job('start','start');
 				var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 				new_job.addHotSpot(new_hotspot);
+				new_job.id = 1;
 				new_job.start = true;
-				job_list.push(new_job);
-				
-				new_job.owner = base_job;
+				new_job.owner = 0;
 				base_job.addSubJob(new_job);
+				job_list.push(new_job);
 
 				/* now create the end job */
 				var end_job = new Job('end','end of project');
 				var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
 				end_job.addHotSpot(new_hotspot);
-				end_job.owner = base_job;
+				end_job.id = 2;
+				end_job.owner = 0;
 				end_job.end = true;
 				new_job.addNextJob(end_job);
 				job_list.push(end_job);
@@ -585,6 +594,7 @@ function repaint(canvas_id)
 		{
 			/* empty the hotspot list on repaint - as the items add themselves back to the list */
 			hotspot_list.length = 0;
+			canvas.globalAlpha = 1;
 
 			/* re-calculate the graph size */	
 			job_list[0].calculateBoxSize(context,job_list[0].hotspot);
@@ -595,18 +605,44 @@ function repaint(canvas_id)
 	
 			/* now render the job_list */
 			job_list[0].paint(context,0,0);
-
-			/* TODO: debug */
-			function censor(key, value) {
-			  if (key == "job") {
-				return job_list.indexOf(value);
-			  }
-			  return value;
-			}
-
-			console.debug(JSON.stringify(hotspot_list,censor));
+		
+			/* TODO: resting */
+			SaveChart();
 		}
 	}
 }
 
+/*--------------------------------------------------------------------------------*
+ * ParseObjects
+ * This function is used by stringify to parse out the temporary objects that are
+ * not required to be saved. 
+ *
+ * returns:
+ * 	 if a single object is to be removed return 'null', if the object is to be
+ * 	 removed then it returns the empty array '[]'.
+ *--------------------------------------------------------------------------------*/
+function ParseObjects(key,value)
+{
+	if (key == "hotspot")
+	{
+		return null;
+	}
+	else if (key == "hotspots") 
+	{
+		return [];
+	}
+	return value;
+}
+
+/*--------------------------------------------------------------------------------*
+ * SaveChart
+ * This function is used save the current chart state.
+ *
+ * returns:
+ * 	nothing.
+ *--------------------------------------------------------------------------------*/
+function SaveChart()
+{
+	console.debug(JSON.stringify(job_list,ParseObjects));
+}
 
