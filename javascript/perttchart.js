@@ -17,8 +17,24 @@
  *--------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------*
- * Object creation functions
+ * The global static items.
  *--------------------------------------------------------------------------------*/
+var job_list;
+var hotspot_list		= [];
+var group_space_gap		= 30;		/* pixel space used for the group arrows */
+
+/*--------------------------------------------------------------------------------*
+ * The buttons for the popups
+ *--------------------------------------------------------------------------------*/
+var button_text = new Array();
+button_text['cancel'] = 'Cancel';
+button_text['subitem'] = 'Add Sub-Job';
+button_text['parallel'] = 'Add Concurrent Job';
+button_text['previous'] = 'Add Dependent Job';
+button_text['after'] = 'Insert Dependancy Job';
+button_text['delete'] = 'Delete Job';
+button_text['create'] = 'Create';
+
 
 /*--------------------------------------------------------------------------------*
  * job
@@ -72,6 +88,7 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			{
 				/* create the enclosing box */
 				box.calculateBoxSize(context,this.hotspots[index]);
+				this.hotspots[index].width += DP_BOX_SPACING;
 				var temp = box.getNextJob();
 				box = temp;
 			}
@@ -86,7 +103,7 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 		}
 
 		/* set the size of the current hotspot */
-		this.hotspot.width = width;
+		this.hotspot.width = width + (group_space_gap * 2);
 		this.hotspot.height = height;
 	}
 
@@ -96,7 +113,7 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 		enclosing_hotspot.height = this.hotspot.height + DP_BOX_TOTAL_SPACING;
 	}
 
-	enclosing_hotspot.width += this.hotspot.width + DP_BOX_TOTAL_SPACING;
+	enclosing_hotspot.width += this.hotspot.width;
 
 	return this.hotspot;
 }
@@ -116,37 +133,61 @@ function job_paint(context,x,y)
 	else
 	{
 		/* var, all items are drawn inside my area box */
-		var my_y = y;
+		var stream_y = y;
+		var group_x	= x + group_space_gap;
 		
-		console.debug(this.text + ": " +this.hotspot.width + " h: " + this.hotspot.height); 
-
 		/* ok, we have sub-jobs calc the size based on this */
 		for (var index=0; index < this.streams.length; index++)
 		{
 			/* set the x-offset from the outer box */
 			var my_x = x + ((this.hotspot.width - this.hotspots[index].width) / 2);
+			var stream_off_x = my_x-group_x;
+			var stream_off_y = stream_y + (this.hotspots[index].height/2);
+	
+			/* draw line from outer box middle to stream middle */
+			DP_drawBoxCurve(context,x,y+(this.hotspot.height/2),group_x,stream_off_y);
+
+			/* draw the line from the group boundary to the box boundary */
+			DP_drawStraightArrow(context,group_x,stream_off_y,stream_off_x,0,0);
 
 			/* now walk down the list of boxes per level */
 			var box = this.streams[index];
 		
-			console.debug("row: " + index + " w: " + this.hotspots[index].width + " h: " + this.hotspots[index].height); 
-
 			while (box != null)
 			{
 				/* increment the offset and do next */
-				my_x += DP_BOX_SPACING;
-				var box_y = my_y + ((this.hotspots[index].height - box.hotspot.height) / 2);
+				box_x = my_x + DP_BOX_SPACING;
+				var box_y = stream_y + ((this.hotspots[index].height - box.hotspot.height) / 2);
+			
+				if (box.terminal)
+				{
+					DP_drawStraightArrow(context,my_x,stream_off_y,box_x-my_x,0,1);
+				}
+				else
+				{
+					DP_drawStraightArrow(context,my_x,stream_off_y,box_x-my_x,0,0);
+				}
 
 				/* paint the box */
-				box.paint(context,my_x,box_y);
+				box.paint(context,box_x,box_y);
+					
+				/* paint after arrow */
+				DP_drawStraightArrow(context,my_x+box.hotspot.width+DP_BOX_SPACING,stream_off_y,box_x-my_x,0,0);
 
 				/* get next job */
 				my_x += box.hotspot.width + DP_BOX_SPACING;
+				
 				box = box.getNextJob();
 			}
 
+			/* draw the line from the group boundary to the box boundary */
+			DP_drawStraightArrow(context,my_x,stream_off_y,stream_off_x,0,0);
+
+			/* draw line from outer box middle to stream middle */
+			DP_drawBoxCurve(context,my_x+stream_off_x,stream_off_y,x+this.hotspot.width,y+(this.hotspot.height/2));
+
 			/* next row */
-			my_y += this.hotspots[index].height;
+			stream_y += this.hotspots[index].height;
 		}
 	}
 }
@@ -167,6 +208,8 @@ function job_addSubJob(job)
 	/* this has sub-jobs so not an active hotspot */
 	this.hotspot.active = false;
 
+	this.terminal = false;
+
 	/* TODO: update the box sizes */
 }
 
@@ -183,6 +226,7 @@ function Job(name)
 	this.next_obj	= null;
 	this.hotspot	= null;
 	this.divisible	= true;
+	this.terminal	= true;
 
 	/* set the sub-items that the job have to have */
 	this.streams	= [];
@@ -270,24 +314,6 @@ function Hotspot(x,y,width,height,owner,active)
 	this.active	= active;
 	this.job	= owner;
 }
-
-/*--------------------------------------------------------------------------------*
- * The global static items.
- *--------------------------------------------------------------------------------*/
-var job_list;
-var hotspot_list		= [];
-
-/*--------------------------------------------------------------------------------*
- * The buttons for the popups
- *--------------------------------------------------------------------------------*/
-var button_text = new Array();
-button_text['cancel'] = 'Cancel';
-button_text['subitem'] = 'Add Sub-Job';
-button_text['parallel'] = 'Add Parallel Job';
-button_text['previous'] = 'Add Dependent Job';
-button_text['after'] = 'Insert Dependancy Job';
-button_text['delete'] = 'Delete Job';
-button_text['create'] = 'Create';
 
 /*--------------------------------------------------------------------------------*
  * The functions that handle the Pertt Chart.
@@ -549,8 +575,8 @@ function repaint(canvas_id)
 			canvas.height	= job_list[0].hotspot.height + 400;
 			
 			/* TODO: remove debug */
-			job_list[0].hotspot.width = 0;
-			job_list[0].hotspot.height = 0;
+//			job_list[0].hotspot.width = 0;
+//			job_list[0].hotspot.height = 0;
 			job_list[0].calculateBoxSize(context,graph);
 
 			/* now render the job_list */

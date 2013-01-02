@@ -17,10 +17,9 @@
  *--------------------------------------------------------------------------------*/
 
 /* 1 pixel border and 5 pixel margin */
-var DP_BOX_LINE_THICKNESS	= 1;											/* the size in pixels of the box thickness */
-var DP_BOX_CORNER_RADIUS	= 5;											/* the radius of the corner of the boxes */
-var DP_BOX_SPACING			= DP_BOX_LINE_THICKNESS + DP_BOX_CORNER_RADIUS;	/* space between the box and the contents */
-var DP_BOX_TOTAL_SPACING	= DP_BOX_SPACING * 2;							/* total whitespace on both sides */
+var DP_BOX_CORNER_RADIUS	= 6;							/* the radius of the corner of the boxes */
+var DP_BOX_SPACING			= DP_BOX_CORNER_RADIUS;			/* space between the box and the contents */
+var DP_BOX_TOTAL_SPACING	= DP_BOX_SPACING * 2;			/* total whitespace on both sides */
 var DP_FONT_SIZE_PX			= 10;
 var DP_BOX_HEIGHT			= DP_BOX_TOTAL_SPACING + DP_FONT_SIZE_PX;
 
@@ -33,6 +32,8 @@ function DP_getBoxSize(context,item)
 function DP_drawFlatArrow(context,x,y,length,pointers)
 {
 	context.beginPath();
+	context.strokeStyle = '#000'; // black
+	context.lineWidth   = 1;
 	context.moveTo(x,y);
 	context.lineTo(x+length,y);
 	context.stroke();
@@ -40,18 +41,32 @@ function DP_drawFlatArrow(context,x,y,length,pointers)
 	if (pointers)
 	{
 		point_dir = 0 - Math.abs(length)/length;
-
-		context.fillStyle   = '#000'; // black
 		
 		var start = x+length;
 
 		// draw pointer
 		context.beginPath();
+		context.fillStyle   = '#000'; // black
 		context.moveTo(start,y);
 		context.lineTo(start + (10 * point_dir),y - 4);
 		context.lineTo(start + (10 * point_dir),y + 4);
 		context.fill();
 	}
+}
+
+// Draw box curve
+// This will assume that the start and end points form a box
+// and the curve will be drawn from the start point to the 
+// end point.
+function DP_drawBoxCurve(context,start_x,start_y,end_x,end_y)
+{
+	var inflection_x = start_x + ((end_x - start_x) / 2);
+
+    context.beginPath();
+	context.strokeStyle = '#000'; // black
+    context.moveTo(start_x,start_y);
+    context.bezierCurveTo(inflection_x,start_y,inflection_x,end_y,end_x,end_y);
+    context.stroke();
 }
 
 // Draw a box with rounded corners.
@@ -62,13 +77,14 @@ function DP_drawTextBoxRounded(context,x,y,text)
 	var height = DP_BOX_HEIGHT;
 	var width  = context.measureText(text).width;
 
+	// Ok draw and fill the circle
+	context.beginPath();
+
 	// set the colours
 	context.fillStyle   = '#fff'; // something
 	context.strokeStyle = '#000'; // black
 	context.lineWidth   = 1;
 
-	// Ok draw and fill the circle
-	context.beginPath();
 	context.arc(x + DP_BOX_CORNER_RADIUS,			y + DP_BOX_CORNER_RADIUS,DP_BOX_CORNER_RADIUS					, Math.PI		, Math.PI * 1.5	, false);
 	context.arc(x + width + DP_BOX_CORNER_RADIUS,	y + DP_BOX_CORNER_RADIUS,DP_BOX_CORNER_RADIUS					, Math.PI * 1.5	, 0				, false);
 	context.arc(x + width + DP_BOX_CORNER_RADIUS,	y + DP_FONT_SIZE_PX + DP_BOX_CORNER_RADIUS,DP_BOX_CORNER_RADIUS	, 0				, Math.PI * 0.5	, false);
@@ -84,43 +100,61 @@ function DP_drawTextBoxRounded(context,x,y,text)
 	context.stroke();
 	
 	// Ok, write the text in the middle of the box
+	context.fillStyle   = '#000'; // black
 	context.fillText(text,x+DP_BOX_CORNER_RADIUS,y+DP_FONT_SIZE_PX);
 }
 
 // The draws an arrow the lies directly on the x/y axis.
-function DP_drawStraightArrow(context,x,y,x_length,y_length)
+function DP_drawStraightArrow(context,x,y,x_length,y_length,arrow_dir)
 {
 	var x_offset = 0;
 	var y_offset = 0;
 	var y_line_offset = 0;
 	var x_line_offset = 0;
+	var x_arrow_end = x;
+	var y_arrow_end = y;
 
-	if (x_length == 0)
+	if (arrow_dir != 0)
 	{
-		x_offset = 4;
-		point_dir = Math.abs(y_length)/y_length;
-		y_line_offset = 4 * point_dir;
-	}
-	else
-	{
-		y_offset = 4;
-		point_dir = Math.abs(x_length)/x_length;
-		x_line_offset = 4 * point_dir;
-	}
+		if (x_length == 0)
+		{
+			x_offset = 3 * arrow_dir;
+			y_line_offset = 0 - (4 * arrow_dir);
 
+			if (arrow_dir == 1)
+			{
+				y_arrow_end = y + y_length;
+			}
+		}
+		else
+		{
+			y_offset = 3 * arrow_dir;
+			x_line_offset = 0 - (4 * arrow_dir);
+
+			if (arrow_dir == 1)
+			{
+				x_arrow_end = x + x_length;
+			}
+		}
+	}
+	
 	context.beginPath();
+	context.strokeStyle = '#000'; // black
+	context.fillStyle   = '#000'; // black
+
 	context.moveTo(x,y);
 	context.lineTo(x+x_length,y+y_length);
 	context.stroke();
 
-	context.fillStyle   = '#000'; // black
-
-	// draw pointer
-	context.beginPath();
-	context.moveTo(x,y);
-	context.lineTo(x + x_offset + x_line_offset, y + y_offset + y_line_offset);
-	context.lineTo(x - x_offset + x_line_offset, y - y_offset + y_line_offset);
-	context.fill();
+	if (arrow_dir != 0)
+	{
+		// draw pointer
+		context.beginPath();
+		context.moveTo(x_arrow_end,y_arrow_end);
+		context.lineTo(x_arrow_end + x_offset + x_line_offset, y_arrow_end + y_offset + y_line_offset);
+		context.lineTo(x_arrow_end - x_offset + x_line_offset, y_arrow_end - y_offset + y_line_offset);
+		context.fill();
+	}
 }
 
 function DP_drawArrowHead(context,x1,y1,angle,x_dir,y_dir)
