@@ -380,7 +380,7 @@ function createButton(type,hotspot,parameter)
  *--------------------------------------------------------------------------------*/
 function createTextBox(id, name, width, max_length)
 {
-	return '<div class="popup_input rounded_bottom rounded_top shadow"> ' + name + ': <input class="popup_null" id="' + id + '" type="text" size="' + width + '" maxlength="' + max_length + '"/></div>';
+	return '<div class="popup_input rounded_bottom rounded_top shadow"> ' + name + ': <input class="popup_textinput" id="' + id + '" type="text" size="' + width + '" maxlength="' + max_length + '"/></div>';
 }
 
 /*--------------------------------------------------------------------------------*
@@ -398,7 +398,7 @@ function createTextBox(id, name, width, max_length)
  *--------------------------------------------------------------------------------*/
 function createTextArea(id, name, columns)
 {
-	return '<div class="popup_input rounded_bottom rounded_top shadow"><label class="popup_null">' + name + ': </label><textarea class="popup_null" id="' + id + '" cols="' + columns + '"></textarea></div>';
+	return '<div class="popup_input rounded_bottom rounded_top shadow"><label class="popup_null">' + name + ': </label><textarea class="popup_textinput" id="' + id + '" cols="' + columns + '"></textarea></div>';
 }
 
 /*--------------------------------------------------------------------------------*
@@ -439,6 +439,7 @@ function actionButtonPress(type,hotspot,parameter)
 function showPopup(type, hotspot)
 {
 	var element, x, y, width, height;
+	var focus = '';
 
 	/* the popup that is in the html */
 	element = document.getElementById('popup');
@@ -473,6 +474,7 @@ function showPopup(type, hotspot)
 						html_text += createTextBox('name','Name',80,120);
 						html_text += createTextArea('description','Description',80);
 						html_text += createButton('create',hotspot,type);
+						focus = 'name';
 						break;
 
 		case 'after':
@@ -482,6 +484,7 @@ function showPopup(type, hotspot)
 						html_text += createTextBox('name','Name',80,120);
 						html_text += createTextArea('description','Description',80);
 						html_text += createButton('create',hotspot,type);
+						focus = 'name';
 						break;
 
 
@@ -492,6 +495,11 @@ function showPopup(type, hotspot)
 
 	element.innerHTML = html_text;
 	element.style.display = "block";
+
+	if (focus != '')
+	{
+		document.getElementById(focus).focus()
+	}
 }
 
 /*--------------------------------------------------------------------------------*
