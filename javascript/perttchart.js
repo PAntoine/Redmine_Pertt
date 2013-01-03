@@ -22,6 +22,7 @@
 var job_list;
 var hotspot_list		= [];
 var group_space_gap		= 30;		/* pixel space used for the group arrows */
+var chart_dirty			= false;	/* has the chart been changed */
 
 /*--------------------------------------------------------------------------------*
  * The buttons for the popups
@@ -34,7 +35,6 @@ button_text['previous'] = 'Add Dependent Job';
 button_text['after'] = 'Insert Dependancy Job';
 button_text['delete'] = 'Delete Job';
 button_text['create'] = 'Create';
-
 
 /*--------------------------------------------------------------------------------*
  * job
@@ -234,6 +234,16 @@ function job_getNextJob()
 	return this.next_obj;
 }
 
+function job_addMethods(job)
+{
+	job.paint				= job_paint;
+	job.addSubJob			= job_addSubJob;
+	job.addHotSpot			= job_addHotSpot;
+	job.addNextJob			= job_addNextJob;
+	job.getNextJob			= job_getNextJob;
+	job.calculateBoxSize	= job_calculateBoxSize;
+}
+
 function Job(name,description)
 {
 	/* set the standard items */
@@ -252,12 +262,7 @@ function Job(name,description)
 	this.hotspots	= [];
 
 	/* add the methods to the object */
-	this.paint				= job_paint;
-	this.addSubJob			= job_addSubJob;
-	this.addHotSpot			= job_addHotSpot;
-	this.addNextJob			= job_addNextJob;
-	this.getNextJob			= job_getNextJob;
-	this.calculateBoxSize	= job_calculateBoxSize;
+	job_addMethods(this);
 }
 
 /*--------------------------------------------------------------------------------*
@@ -306,6 +311,9 @@ function createJob(hotspot, name, description, parameter)
 
 	/* add the new job to the list of jobs */
 	job_list.push(new_job);
+
+	/* now store the updated chart */
+	StoreChart();
 
 	repaint('test_1');
 }
@@ -529,34 +537,43 @@ function initialise(canvas_id)
 			/* check to see if the job_list has been set, if not set it to the default */
 			if (job_list === undefined)
 			{
-				job_list = Array();
+				var saved_chart = RetrieveChart();
 
-				/* create the basic project */
-				var base_job = new Job('project','Project Root');
-				var new_hotspot = new Hotspot(0,0,0,0,base_job,false);
-				base_job.addHotSpot(new_hotspot);
-				base_job.id = 0;
-				job_list.push(base_job);
+				if (saved_chart != '')
+				{
+					LoadChart(saved_chart);
+				}
+				else
+				{
+					job_list = Array();
 
-				/* now create the start job */
-				var new_job = new Job('start','start');
-				var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
-				new_job.addHotSpot(new_hotspot);
-				new_job.id = 1;
-				new_job.start = true;
-				new_job.owner = 0;
-				base_job.addSubJob(new_job);
-				job_list.push(new_job);
+					/* create the basic project */
+					var base_job = new Job('project','Project Root');
+					var new_hotspot = new Hotspot(0,0,0,0,base_job,false);
+					base_job.addHotSpot(new_hotspot);
+					base_job.id = 0;
+					job_list.push(base_job);
 
-				/* now create the end job */
-				var end_job = new Job('end','end of project');
-				var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
-				end_job.addHotSpot(new_hotspot);
-				end_job.id = 2;
-				end_job.owner = 0;
-				end_job.end = true;
-				new_job.addNextJob(end_job);
-				job_list.push(end_job);
+					/* now create the start job */
+					var new_job = new Job('start','start');
+					var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
+					new_job.addHotSpot(new_hotspot);
+					new_job.id = 1;
+					new_job.start = true;
+					new_job.owner = 0;
+					base_job.addSubJob(new_job);
+					job_list.push(new_job);
+
+					/* now create the end job */
+					var end_job = new Job('end','end of project');
+					var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
+					end_job.addHotSpot(new_hotspot);
+					end_job.id = 2;
+					end_job.owner = 0;
+					end_job.end = true;
+					new_job.addNextJob(end_job);
+					job_list.push(end_job);
+				}
 			}
 
 			/* calculate the box sizes - this will need to be done once from the top level */
@@ -605,9 +622,6 @@ function repaint(canvas_id)
 	
 			/* now render the job_list */
 			job_list[0].paint(context,0,0);
-		
-			/* TODO: resting */
-			SaveChart();
 		}
 	}
 }
@@ -634,15 +648,131 @@ function ParseObjects(key,value)
 	return value;
 }
 
+
 /*--------------------------------------------------------------------------------*
- * SaveChart
- * This function is used save the current chart state.
+ * SupportsHTML5Storage
+ * This function is used test for localstorage support.
+ *
+ * returns:
+ * 	true if local storage is supported, else false.
+ *--------------------------------------------------------------------------------*/
+function SupportsHTML5Storage() 
+{
+	try
+	{
+		return 'localStorage' in window && window['localStorage'] !== null;
+	} 
+	catch (e) 
+	{
+		return false;
+	}
+}
+
+/*--------------------------------------------------------------------------------*
+ * StoreChart
+ * This function is used store the current chart state.
+ *
+ * This will use the localstorage functions of HTML5 to store the current chart.
+ * It will also update the current save time so that the chart knows that it has
+ * not been updated, and an update is required.
  *
  * returns:
  * 	nothing.
  *--------------------------------------------------------------------------------*/
-function SaveChart()
+function StoreChart()
 {
-	console.debug(JSON.stringify(job_list,ParseObjects));
+	if (SupportsHTML5Storage())
+	{
+		var date = new Date();
+
+		/* set the time that the chart was last updated */
+		chart_dirty = true;
+		chart_updated = date.getTime();
+		localStorage["pertt_chart.open"] = '1';
+		localStorage["pertt_chart.dirty"] = '1';
+		localStorage["pertt_chart.lastupdate"] = chart_updated;
+
+		/* set the local storage to the current chart */
+		localStorage["pertt_chart.chart"] = JSON.stringify(job_list,ParseObjects);
+	}
 }
+
+/*--------------------------------------------------------------------------------*
+ * RetrieveChart
+ * This function is used retrieve the current chart state.
+ *
+ * This will use the localstorage functions of HTML5 to retrieve the current chart.
+ * If there is not a chart saved or the browser does not support local storage
+ * then this function will return the empty string.
+ *
+ * returns:
+ *	JSON string with the saved state, else the empty string.
+ *--------------------------------------------------------------------------------*/
+function RetrieveChart()
+{
+	var result = '';
+
+	if (SupportsHTML5Storage())
+	{
+		var date = new Date();
+
+		/* set the time that the chart was last updated */
+		if (localStorage["pertt_chart.open"] == '1')
+		{
+			/* we have a stored chart */
+			chart_dirty = (localStorage["pertt_chart.dirty"] == '1');
+			chart_updated = parseInt(localStorage["pertt_chart.lastupdate"]);
+			result = localStorage["pertt_chart.chart"];
+		}
+	}
+
+	return result;
+}
+
+/*--------------------------------------------------------------------------------*
+ * LoadChart
+ * This function is used Load a chart from a JSON string.
+ * This function will accept the JSON string that contains the chart and it will
+ * then add the required hotspots to the chart.
+ *
+ * parameters:
+ *	chart	string containing the JSON string with the chart data within it.
+ *
+ * returns:
+ *	true if the chart was loaded successfully else, false.
+ *--------------------------------------------------------------------------------*/
+function LoadChart(chart)
+{
+	var result = false;
+
+	try
+	{
+		/* load the chart */
+		job_list = JSON.parse(chart);
+
+		/* need to fixup the hotspots as these are not saved with the chart */
+		for (var index=0; index < job_list.length; index++)
+		{
+			/* add the methods to the job */
+			job_addMethods(job_list[index]);
+
+			/* add the jobs hotspot */
+			var active = (job_list[index].streams.length == 0);
+			job_list[index].hotspot = new Hotspot(0,0,0,0,job_list[index],active);
+
+			/* now add the hotspots for the streams */
+			for (var stream_no=0; stream_no < job_list[index].streams.length; stream_no++)
+			{
+				job_list[index].hotspots.push(new Hotspot(0,0,0,0,this,false));
+			}
+		}
+	}
+	catch (e)
+	{
+		/* TODO: alert user old chart no able to be loaded */
+	}
+
+	return result;
+}
+
 
