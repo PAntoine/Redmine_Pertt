@@ -214,10 +214,225 @@ function job_paint(context,x,y,repaint)
 
 function job_addNextJob(job)
 {
-	job.next_obj = this.next_obj;
-	this.next_obj = job.id;
+	/* set up the new objects pointers */
+	job.next_job = this.next_job;
+	job.prev_job = this.id;
 
-	/* TODO: update the box sizes */
+	if (this.next_job != 0)
+	{
+		job_list[this.next_job].prev_job = job.id;
+	}
+
+	/* now set up this object */
+	this.next_job = job.id;
+}
+
+function job_findPreviousJob()
+{
+	var result = this.id;
+
+	if (!this.start)
+	{
+		var current = this.id;
+
+		do
+		{
+			/* ok, at start of box, goto the owner */
+			if (job_list[current].prev_job == 0)
+			{
+				current = job_list[current].owner;
+			}
+			else
+			{
+				current = job_list[current].prev_job;
+
+				/* ok, if we are walking into a box then we need to get the last item in the box */
+				if (job_list[current].streams.length != 0)
+				{
+					/* start at the first item in the box */
+					current = job_list[current].streams[0];
+
+					/* walk forward until we find the end of the box */
+					while(job_list[current].next_job != 0)
+					{
+						current = job_list[current].next_job;
+
+						if (job_list[current].streams.length != 0)
+						{
+							current = job_list[current].streams[0];
+						}
+					}
+				}
+			}
+		}
+		while(current != 0 && job_list[current].start != true && job_list[current].terminal != true);
+
+		result = current;
+	}
+
+	return result;
+}
+
+function job_findNextJob()
+{
+	var result = this.id;
+
+	if (!this.end)
+	{
+		var current = this.id;
+
+		do
+		{
+			if (job_list[current].next_job != 0)
+			{
+				current = job_list[current].next_job;
+			}
+			else
+			{
+				/* ok, end of current - need to go owner->next */
+				do
+				{
+					current = job_list[current].owner;
+				}
+				while (job_list[current].next_job == 0);
+
+				current = job_list[current].next_job;
+			}
+
+			if (job_list[current].streams.length != 0)
+			{
+				/* start at the first item in the box */
+				current = job_list[current].streams[0];
+			}
+		}
+		while(current != 0 && job_list[current].end != true && job_list[current].terminal != true);
+
+		result = current;
+	}
+
+	return result;
+}
+
+function job_findBelowJob()
+{
+	var result = this.id;
+
+	if (!this.end && !this.start)
+	{
+		var current = this.id;
+
+		do
+		{
+			/* find the first item in the stream */
+			while (!job_list[current].first_job && !job_list[current].start)
+			{
+				current = job_list[current].prev_job;
+			}
+
+			if (job_list[current].first_job)
+			{
+				var found = false;
+
+				for (var index=0; index < job_list[job_list[current].owner].streams.length; index++)
+				{
+					if (job_list[job_list[current].owner].streams[index] == current)
+					{
+						if (job_list[job_list[current].owner].streams.length > (index + 1))
+						{
+							/* it's good */
+							current = job_list[job_list[current].owner].streams[index+1];
+							found = true;
+						}
+						break;
+					}
+				}
+
+				if (found)
+				{
+					break;
+				}
+				else
+				{
+					/* ok, we need to walk up a link to find it */
+					current = job_list[current].owner;
+				}
+			}
+		} 
+		while (current != 0 && !job_list[current].start );
+
+		if (!job_list[current].start)
+		{
+			while (!job_list[current].terminal)
+			{
+				current = job_list[current].streams[0];
+			}
+
+			result = current;
+		}
+	}
+
+	return result;
+}
+
+function job_findAboveJob()
+{
+	var result = this.id;
+
+	if (!this.end && !this.start)
+	{
+		var current = this.id;
+
+		do
+		{
+			/* find the first item in the stream */
+			while (!job_list[current].first_job && !job_list[current].start)
+			{
+				current = job_list[current].prev_job;
+			}
+
+			if (job_list[current].first_job)
+			{
+				var found = false;
+
+				for (var index=0; index < job_list[job_list[current].owner].streams.length; index++)
+				{
+					if (job_list[job_list[current].owner].streams[index] == current)
+					{
+						if (index > 0)
+						{
+							/* it's good */
+							current = job_list[job_list[current].owner].streams[index-1];
+							found = true;
+						}
+						break;
+					}
+				}
+
+				if (found)
+				{
+					break;
+				}
+				else
+				{
+					/* ok, we need to walk up a link to find it */
+					current = job_list[current].owner;
+				}
+			}
+		} 
+		while (current != 0 && !job_list[current].start );
+
+		if (!job_list[current].start)
+		{
+			while (!job_list[current].terminal)
+			{
+				current = job_list[current].streams[job_list[current].streams.length - 1];
+			}
+
+			result = current;
+		}
+	}
+
+	return result;
 }
 
 function job_addSubJob(job)
@@ -231,12 +446,11 @@ function job_addSubJob(job)
 
 	this.terminal = false;
 
-	/* TODO: update the box sizes */
 }
 
 function job_getNextJob()
 {
-	return this.next_obj;
+	return this.next_job;
 }
 
 function job_addMethods(job)
@@ -246,6 +460,10 @@ function job_addMethods(job)
 	job.addHotSpot			= job_addHotSpot;
 	job.addNextJob			= job_addNextJob;
 	job.getNextJob			= job_getNextJob;
+	job.findNextJob			= job_findNextJob;
+	job.findBelowJob		= job_findBelowJob;
+	job.findAboveJob		= job_findAboveJob;
+	job.findPreviousJob		= job_findPreviousJob;
 	job.calculateBoxSize	= job_calculateBoxSize;
 }
 
@@ -254,7 +472,8 @@ function Job(name,description)
 	/* set the standard items */
 	this.text			= name;
 	this.owner			= 0;
-	this.next_obj		= 0;
+	this.next_job		= 0;
+	this.prev_job		= 0;
 	this.hotspot		= null;
 	this.terminal		= true;
 	this.first_job		= false;
@@ -586,15 +805,16 @@ function touchListenerFunction(e)
 }
 
 /*--------------------------------------------------------------------------------*
- * keypresssHandler
+ * keypressHandler
  * This function will handle the keypresses attached to the page.
  *--------------------------------------------------------------------------------*/
-function keypresssHandler(e)
+function keypressHandler(e)
 {
 	var event = e || window.event;
 
 	var keycode = event.charCode || event.keyCode;
 	
+
 	if (chart_popup_active)
 	{
 		var action  = chart_button_list[chart_current_button].substr(7);
@@ -609,12 +829,15 @@ function keypresssHandler(e)
 	}
 	else
 	{
+		/* TODO: hack */
+		var canvas = document.getElementById('test_1');
+
 		switch (keycode)
 		{
-			case 37:	console.debug("left arrow");												break;	/* left arrow */
-			case 38:	console.debug("up arrow");													break;	/* up arrow */
-			case 39:	console.debug("right arrow");												break;	/* right arrow */
-			case 40:	console.debug("down arrow");												break;	/* down arrow */
+			case 37:	ChangeSelection(canvas,job_list[chart_current_job].findPreviousJob());		break;	/* left arrow */
+			case 38:	ChangeSelection(canvas,job_list[chart_current_job].findAboveJob());			break;	/* up arrow */
+			case 39:	ChangeSelection(canvas,job_list[chart_current_job].findNextJob());			break;	/* right arrow */
+			case 40:	ChangeSelection(canvas,job_list[chart_current_job].findBelowJob());			break;	/* down arrow */
 			case 13:	showPopup('select',job_list[chart_current_job].hotspot.id);					break;	/* select */
 		}
 	}
@@ -667,6 +890,8 @@ function initialise(canvas_id)
 					base_job.addSubJob(new_job);
 					job_list.push(new_job);
 
+					chart_current_job = 1;
+
 					/* now create the end job */
 					var end_job = new Job('end','end of project');
 					var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
@@ -693,7 +918,7 @@ function initialise(canvas_id)
 			canvas.addEventListener("click", touchListenerFunction, false);
 
 			/* ok, add the keypress listener to the body */
-			document.body.onkeydown = keypresssHandler;
+			document.body.onkeydown = keypressHandler;
 
 		}
 	}
@@ -709,9 +934,9 @@ function initialise(canvas_id)
 function repaint(canvas_id)
 {
 	var canvas = document.getElementById(canvas_id);
-	
 	if (canvas)
 	{
+		canvas.focus();
 		var context = canvas.getContext('2d');
 
 		if (context)
