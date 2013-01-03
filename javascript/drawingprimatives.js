@@ -71,7 +71,7 @@ function DP_drawBoxCurve(context,start_x,start_y,end_x,end_y)
 
 // Draw a box with rounded corners.
 // x,y is the top left corner.
-function DP_drawTextBoxRounded(context,x,y,text)
+function DP_drawTextBoxRounded(context,x,y,text,selected,repaint)
 {
 	context.textBaseline = 'middle';
 	var height = DP_BOX_HEIGHT;
@@ -81,7 +81,11 @@ function DP_drawTextBoxRounded(context,x,y,text)
 	context.beginPath();
 
 	// set the colours
-	context.fillStyle   = '#fff'; // something
+	if (selected)
+		context.fillStyle   = '#ff0'; // yellow
+	else
+		context.fillStyle   = '#fff'; // white
+
 	context.strokeStyle = '#000'; // black
 	context.lineWidth   = 1;
 
@@ -91,13 +95,22 @@ function DP_drawTextBoxRounded(context,x,y,text)
 	context.arc(x + DP_BOX_CORNER_RADIUS,			y + DP_FONT_SIZE_PX + DP_BOX_CORNER_RADIUS,DP_BOX_CORNER_RADIUS	, Math.PI * 0.5	, Math.PI 		, false);
 	context.lineTo(x ,y + DP_BOX_CORNER_RADIUS);
 
-	context.shadowColor = "rgba( 0, 0, 0, 0.3 )";
-	context.shadowOffsetX = 2;
-	context.shadowOffsetY = 2;
-	context.shadowBlur = 3;
+	/* shadows are accumulative (we at least in Firefox) so don't draw on repaint */
+	if (!repaint)
+	{
+		context.shadowColor = "rgba( 0, 0, 0, 0.3 )";
+		context.shadowOffsetX = 2;
+		context.shadowOffsetY = 2;
+		context.shadowBlur = 3;
+	}
 
-	context.fill();
 	context.stroke();
+	context.fill();
+	
+	// reset the shadow before re-drawing
+	context.shadowOffsetX = 0;
+	context.shadowOffsetY = 0;
+	context.shadowBlur = 0;
 	
 	// Ok, write the text in the middle of the box
 	context.fillStyle   = '#000'; // black

@@ -20,10 +20,13 @@
  * The global static items.
  *--------------------------------------------------------------------------------*/
 var job_list;
-var hotspot_list		= [];
-var group_space_gap		= 30;		/* pixel space used for the group arrows */
-var chart_dirty			= false;	/* has the chart been changed */
-var chart_popup_active	= false;	/* is there a popup on the screen */
+var hotspot_list			= [];
+var group_space_gap			= 30;		/* pixel space used for the group arrows */
+var chart_dirty				= false;	/* has the chart been changed */
+var chart_popup_active		= false;	/* is there a popup on the screen */
+var	chart_current_job		= 0;		/* the currently selected job on the screen */
+var chart_button_list		= [];		/* the list of buttons on the current popup */
+var chart_current_button	= 0;
 
 /*--------------------------------------------------------------------------------*
  * The buttons for the popups
@@ -120,16 +123,17 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 	return this.hotspot;
 }
 
-function job_paint(context,x,y)
+function job_paint(context,x,y,repaint)
 {
 	if (this.streams.length == 0)
 	{
 		/* ok, leaf box, just draw it */
-		DP_drawTextBoxRounded(context,x,y,this.text);
+		DP_drawTextBoxRounded(context,x,y,this.text,this.selected,repaint);
 	
 		/* this is a leaf item, needs to be added to hotspot list so it can be selected */
 		this.hotspot.y = y;
 		this.hotspot.x = x;
+		this.hotspot.id = hotspot_list.length;
 		hotspot_list.push(this.hotspot);
 	}
 	else
@@ -179,7 +183,7 @@ function job_paint(context,x,y)
 				}
 
 				/* paint the box */
-				box.paint(context,box_x,box_y);
+				box.paint(context,box_x,box_y,false);
 		
 				/* only paint the end line if it is a real box */
 				if (!box.end && box.terminal)
@@ -313,6 +317,11 @@ function createJob(hotspot, name, description, parameter)
 	/* add the new job to the list of jobs */
 	job_list.push(new_job);
 
+	/* been created you are now current */
+	job_list[chart_current_job].selected = false;
+	new_job.selected = true;
+	chart_current_job = new_job.id;
+
 	/* now store the updated chart */
 	StoreChart();
 
@@ -362,7 +371,9 @@ function Hotspot(x,y,width,height,owner,active)
  *--------------------------------------------------------------------------------*/
 function createButton(type,hotspot,parameter)
 {
-	return '<div class="popup_button rounded_bottom rounded_top shadow" onClick="actionButtonPress(\'' + type + '\', ' + hotspot + ',\'' + parameter + '\');">' + button_text[type] +'</div>';
+	chart_button_list.push("button_" + type);
+
+	return '<div class="popup_button rounded_bottom rounded_top shadow" id="button_' + type + '" onClick="actionButtonPress(\'' + type + '\', ' + hotspot + ',\'' + parameter + '\');">' + button_text[type] +'</div>';
 }
 
 /*--------------------------------------------------------------------------------*
@@ -437,21 +448,30 @@ function actionButtonPress(type,hotspot,parameter)
  * parameters:
  * 	type	This is the type of pop-up that is to be displayed.
  * 	hotspot	This is the index number of the hotspot.
+ * 	target	The item that was selected.
  *--------------------------------------------------------------------------------*/
-function showPopup(type, hotspot)
+function showPopup(type, hotspot, target)
 {
 	var element, x, y, width, height;
 	var focus = '';
 
-	chart_default_action = 'cancel';
-	chart_default_hotspot = 0;
+	/* what happens when the 'return' key is pressed */
+	chart_default_hotspot = hotspot;
 	chart_default_parameter = '';
 
-	/* the popup that is in the html */
+	if (target)
+	{
+		/* been clicked on you are now current */
+		ChangeSelection(target,hotspot_list[hotspot].job.id);
+	}
+
+	/* the popup that is in the html - position it near the element being amended */
 	element = document.getElementById('popup');
-	
 	element.style.left = (hotspot_list[hotspot].x + hotspot_list[hotspot].width + 10) + "px";
 	element.style.top = (hotspot_list[hotspot].y + 10) + "px";
+
+	/* only want new buttons */
+	chart_button_list = [];
 
 	switch(type)
 	{
@@ -481,8 +501,6 @@ function showPopup(type, hotspot)
 						html_text += createTextArea('description','Description',80);
 						html_text += createButton('create',hotspot,type);
 						focus = 'name';
-						chart_default_action = 'create';
-						chart_default_hotspot = hotspot;
 						chart_default_parameter = type;
 						break;
 
@@ -494,8 +512,6 @@ function showPopup(type, hotspot)
 						html_text += createTextArea('description','Description',80);
 						html_text += createButton('create',hotspot,type);
 						focus = 'name';
-						chart_default_action = 'create';
-						chart_default_hotspot = hotspot;
 						chart_default_parameter = type;
 						break;
 
@@ -505,9 +521,14 @@ function showPopup(type, hotspot)
 	
 	html_text += createButton('cancel',hotspot);
 
+	/* display the popup */
 	element.innerHTML = html_text;
 	element.style.display = "block";
 	chart_popup_active = true;
+
+	/* the current selected button */
+	chart_current_button = 0;
+	SetButtonSelection(0);
 
 	if (focus != '')
 	{
@@ -516,9 +537,33 @@ function showPopup(type, hotspot)
 }
 
 /*--------------------------------------------------------------------------------*
+ * SetButtonSelection
+ * This function will set the button selection for the popup.
+ *--------------------------------------------------------------------------------*/
+function SetButtonSelection(selected_item)
+{
+	var selection = selected_item;
+
+	if (selected_item >= chart_button_list.length)
+	{
+		selection = 0;
+	}
+	else if (selected_item < 0)
+	{
+		selection = chart_button_list.length - 1;
+	}
+	
+	/* change to background colour - but should use CSS but that is not fully supported on all browsers */
+	document.getElementById(chart_button_list[chart_current_button]).className = "popup_button rounded_bottom rounded_top shadow";
+	document.getElementById(chart_button_list[selection]).className = "popup_button_selected rounded_bottom rounded_top shadow"
+
+	chart_current_button = selection;
+}
+
+/*--------------------------------------------------------------------------------*
  * touchListenerFunction
- * This function will initialise the canvas for drawing the pertt chart.
- * It will init the canvas and load the initial model and do the initial render.
+ *
+ * This function will handle the touches/clicks from the canvas.
  *--------------------------------------------------------------------------------*/
 function touchListenerFunction(e)
 {
@@ -533,7 +578,7 @@ function touchListenerFunction(e)
 		{
 			if (!hotspot_list[index].job.end)
 			{
-				showPopup('select',index);
+				showPopup('select',index,e.target);
 			}
 			break;
 		}
@@ -546,21 +591,31 @@ function touchListenerFunction(e)
  *--------------------------------------------------------------------------------*/
 function keypresssHandler(e)
 {
-	event = e || window.event;
+	var event = e || window.event;
 
 	var keycode = event.charCode || event.keyCode;
-
+	
 	if (chart_popup_active)
 	{
-		if (keycode == 13)
+		var action  = chart_button_list[chart_current_button].substr(7);
+
+		switch (keycode)
 		{
-			/* return has been pressed */
-			actionButtonPress(chart_default_action,chart_default_hotspot,chart_default_parameter);
+			case 13:	actionButtonPress(action,chart_default_hotspot,chart_default_parameter);	break;	/* return */
+			case 27:	actionButtonPress('cancel');												break;	/* escape */
+			case 38:	SetButtonSelection(chart_current_button - 1);								break;	/* up arrow */
+			case 40:	SetButtonSelection(chart_current_button + 1);								break;	/* down arrow */
 		}
-		else if (keycode == 27)
+	}
+	else
+	{
+		switch (keycode)
 		{
-			/* cancel button is pressed */
-			actionButtonPress('cancel');
+			case 37:	console.debug("left arrow");												break;	/* left arrow */
+			case 38:	console.debug("up arrow");													break;	/* up arrow */
+			case 39:	console.debug("right arrow");												break;	/* right arrow */
+			case 40:	console.debug("down arrow");												break;	/* down arrow */
+			case 13:	showPopup('select',job_list[chart_current_job].hotspot.id);					break;	/* select */
 		}
 	}
 }
@@ -573,6 +628,7 @@ function keypresssHandler(e)
 function initialise(canvas_id)
 {
 	var canvas  = document.getElementById(canvas_id);
+	holding_box	= new Hotspot(0,0,0,0,null,false);
 
 	if (canvas)
 	{
@@ -605,6 +661,7 @@ function initialise(canvas_id)
 					var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 					new_job.addHotSpot(new_hotspot);
 					new_job.id = 1;
+					new_job.selected = true;
 					new_job.start = true;
 					new_job.owner = 0;
 					base_job.addSubJob(new_job);
@@ -623,14 +680,14 @@ function initialise(canvas_id)
 			}
 
 			/* calculate the box sizes - this will need to be done once from the top level */
-			job_list[0].calculateBoxSize(context,job_list[0].hotspot);
+			job_list[0].calculateBoxSize(context,holding_box);
 
 			/* set the canvas size to that of the toplevel box */
 			canvas.width	= job_list[0].hotspot.width;
 			canvas.height	= job_list[0].hotspot.height;
 
 			/* now render the job_list */
-			job_list[0].paint(context,0,0);
+			job_list[0].paint(context,0,0,false);
 
 			/* finally add the onClick listener to the canvas */
 			canvas.addEventListener("click", touchListenerFunction, false);
@@ -661,17 +718,41 @@ function repaint(canvas_id)
 		{
 			/* empty the hotspot list on repaint - as the items add themselves back to the list */
 			hotspot_list.length = 0;
-			canvas.globalAlpha = 1;
 
 			/* re-calculate the graph size */	
-			job_list[0].calculateBoxSize(context,job_list[0].hotspot);
+			job_list[0].calculateBoxSize(context,holding_box);
 
 			/* set the canvas size to that of the toplevel box - note this also clears the canvas */
 			canvas.width	= job_list[0].hotspot.width;
 			canvas.height	= job_list[0].hotspot.height;
-	
-			/* now render the job_list */
-			job_list[0].paint(context,0,0);
+
+			job_list[0].paint(context,0,0,false);
+		}
+	}
+}
+
+/*--------------------------------------------------------------------------------*
+ * ChangeSelection
+ *
+ * This function will change the job that is selected on the screen. It will cause
+ * the previously selected job and the newly selected job to be repainted.
+ *--------------------------------------------------------------------------------*/
+function ChangeSelection(canvas,new_selection)
+{
+	if (canvas)
+	{
+		var context = canvas.getContext('2d');
+
+		if (context)
+		{
+			/* remove selection from the old - and repaint */
+			job_list[chart_current_job].selected = false;
+			job_list[chart_current_job].paint(context,job_list[chart_current_job].hotspot.x,job_list[chart_current_job].hotspot.y,true);
+
+			/* select the new - repaint */
+			chart_current_job = new_selection;
+			job_list[chart_current_job].selected = true;
+			job_list[chart_current_job].paint(context,job_list[chart_current_job].hotspot.x,job_list[chart_current_job].hotspot.y,true);
 		}
 	}
 }
@@ -815,6 +896,9 @@ function LoadChart(chart)
 			{
 				job_list[index].hotspots.push(new Hotspot(0,0,0,0,this,false));
 			}
+
+			if (job_list[index].selected)
+				chart_current_job = index;
 		}
 	}
 	catch (e)
