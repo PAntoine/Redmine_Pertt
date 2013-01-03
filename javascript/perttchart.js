@@ -23,6 +23,7 @@ var job_list;
 var hotspot_list		= [];
 var group_space_gap		= 30;		/* pixel space used for the group arrows */
 var chart_dirty			= false;	/* has the chart been changed */
+var chart_popup_active	= false;	/* is there a popup on the screen */
 
 /*--------------------------------------------------------------------------------*
  * The buttons for the popups
@@ -414,6 +415,7 @@ function actionButtonPress(type,hotspot,parameter)
 	/* remove old window */
 	element = document.getElementById('popup');
 	element.style.display = "none";
+	chart_popup_active = false;
 
 	/* now handle the action on the new window */
 	switch(type)
@@ -440,6 +442,10 @@ function showPopup(type, hotspot)
 {
 	var element, x, y, width, height;
 	var focus = '';
+
+	chart_default_action = 'cancel';
+	chart_default_hotspot = 0;
+	chart_default_parameter = '';
 
 	/* the popup that is in the html */
 	element = document.getElementById('popup');
@@ -475,6 +481,9 @@ function showPopup(type, hotspot)
 						html_text += createTextArea('description','Description',80);
 						html_text += createButton('create',hotspot,type);
 						focus = 'name';
+						chart_default_action = 'create';
+						chart_default_hotspot = hotspot;
+						chart_default_parameter = type;
 						break;
 
 		case 'after':
@@ -485,6 +494,9 @@ function showPopup(type, hotspot)
 						html_text += createTextArea('description','Description',80);
 						html_text += createButton('create',hotspot,type);
 						focus = 'name';
+						chart_default_action = 'create';
+						chart_default_hotspot = hotspot;
+						chart_default_parameter = type;
 						break;
 
 
@@ -495,6 +507,7 @@ function showPopup(type, hotspot)
 
 	element.innerHTML = html_text;
 	element.style.display = "block";
+	chart_popup_active = true;
 
 	if (focus != '')
 	{
@@ -523,6 +536,31 @@ function touchListenerFunction(e)
 				showPopup('select',index);
 			}
 			break;
+		}
+	}
+}
+
+/*--------------------------------------------------------------------------------*
+ * keypresssHandler
+ * This function will handle the keypresses attached to the page.
+ *--------------------------------------------------------------------------------*/
+function keypresssHandler(e)
+{
+	event = e || window.event;
+
+	var keycode = event.charCode || event.keyCode;
+
+	if (chart_popup_active)
+	{
+		if (keycode == 13)
+		{
+			/* return has been pressed */
+			actionButtonPress(chart_default_action,chart_default_hotspot,chart_default_parameter);
+		}
+		else if (keycode == 27)
+		{
+			/* cancel button is pressed */
+			actionButtonPress('cancel');
 		}
 	}
 }
@@ -596,6 +634,10 @@ function initialise(canvas_id)
 
 			/* finally add the onClick listener to the canvas */
 			canvas.addEventListener("click", touchListenerFunction, false);
+
+			/* ok, add the keypress listener to the body */
+			document.body.onkeydown = keypresssHandler;
+
 		}
 	}
 }
