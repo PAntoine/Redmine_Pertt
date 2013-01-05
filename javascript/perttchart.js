@@ -128,7 +128,7 @@ function job_paint(context,x,y,repaint)
 	if (this.streams.length == 0)
 	{
 		/* ok, leaf box, just draw it */
-		DP_drawTextBoxRounded(context,x,y,this.text,this.selected,repaint);
+		DP_drawTextBoxRounded(context,x,y,this.name,this.selected,repaint);
 	
 		/* this is a leaf item, needs to be added to hotspot list so it can be selected */
 		this.hotspot.y = y;
@@ -470,7 +470,7 @@ function job_addMethods(job)
 function Job(name,description)
 {
 	/* set the standard items */
-	this.text			= name;
+	this.name			= name;
 	this.owner			= 0;
 	this.next_job		= 0;
 	this.prev_job		= 0;
@@ -695,7 +695,7 @@ function showPopup(type, hotspot, target)
 	switch(type)
 	{
 		/* basic click/touch on an element */
-		case 'select':	html_text = "amend: " + hotspot_list[hotspot].job.text + "<p>";
+		case 'select':	html_text = "amend: " + hotspot_list[hotspot].job.name + "<p>";
 						if (hotspot_list[hotspot].job.start)
 						{
 							html_text += createButton('after',hotspot,0);
@@ -715,7 +715,7 @@ function showPopup(type, hotspot, target)
 						}
 						break;
 
-		case 'subitem':	html_text = "new sub-item: " + hotspot_list[hotspot].job.text + "<p>";
+		case 'subitem':	html_text = "new sub-item: " + hotspot_list[hotspot].job.name + "<p>";
 						html_text += createTextBox('name','Name',80,120);
 						html_text += createTextArea('description','Description',80);
 						html_text += createButton('create',hotspot,type);
@@ -726,7 +726,7 @@ function showPopup(type, hotspot, target)
 		case 'after':
 		case 'parallel':
 		case 'previous':
-						html_text = "new: " + hotspot_list[hotspot].job.text + "<p>";
+						html_text = "new: " + hotspot_list[hotspot].job.name + "<p>";
 						html_text += createTextBox('name','Name',80,120);
 						html_text += createTextArea('description','Description',80);
 						html_text += createButton('create',hotspot,type);
