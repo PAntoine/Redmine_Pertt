@@ -1,7 +1,8 @@
-<h2>PerttController#Amend</h2>
+<h2>Amend Pertt Chart: <%= @chart_name %> </h2>
 
+<div class="container">
 <div id='popup' class="popup rounded_bottom rounded_top shadow"></div>
-<canvas id="<%= @canvas_id %>"></canvas>
+<p align="center"><canvas id="<%= @canvas_id %>"></canvas></p>
 
 <%= javascript_tag do -%>
 	var pertt_canvas_id = "<%= @canvas_id %>"
@@ -14,4 +15,5 @@
     <%= javascript_include_tag 'perttchart.js', :plugin => 'pertt' %>
     <%= javascript_include_tag 'drawingprimatives.js', :plugin => 'pertt' %>
 <% end %>
-
+</div>
+</div>

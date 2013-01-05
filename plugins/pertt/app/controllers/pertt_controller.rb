@@ -26,6 +26,7 @@ class PerttController < ApplicationController
 
 	def amend
 		chart = PerttChart.find(params[:id])
+		@chart_name = chart.name
 		@canvas_id = chart.name.gsub(" ", "_")
 
 		job_list = chart.pertt_jobs
@@ -36,7 +37,7 @@ class PerttController < ApplicationController
 			@chart_model = 'null'
 		else
 			# need to read the database to find the objects within the chart
-			@chart_model = '["name":"' << chart.name << '","canvas_id":"' << @canvas_id << '","job_list":['
+			@chart_model = '['
 
 			# Now iterate over the jobs and put them into the model
 			job_list.each_with_index do |job, idx|
@@ -44,7 +45,7 @@ class PerttController < ApplicationController
 			end
 
 			# end the model
-			@chart_model << "null]]"
+			@chart_model << "null]"
 		end
 	end
 
