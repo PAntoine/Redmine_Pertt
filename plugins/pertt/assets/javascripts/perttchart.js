@@ -544,7 +544,7 @@ function createJob(hotspot, name, description, parameter)
 	/* now store the updated chart */
 	StoreChart();
 
-	repaint('test_1');
+	repaint(pertt_canvas_id);
 }
 		
 /*--------------------------------------------------------------------------------*
@@ -830,7 +830,9 @@ function keypressHandler(e)
 	else
 	{
 		/* TODO: hack */
-		var canvas = document.getElementById('test_1');
+		var canvas = document.getElementById(pertt_canvas_id);
+
+		console.debug("canvas: " + canvas + "id: " + pertt_canvas_id);
 
 		switch (keycode)
 		{
@@ -923,7 +925,7 @@ function initialise(canvas_id,import_chart)
 
 			/* ok, add the keypress listener to the body */
 			document.body.onkeydown = keypressHandler;
-
+			canvas.focus()
 		}
 	}
 }

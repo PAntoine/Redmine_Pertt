@@ -25,7 +25,7 @@ var DP_BOX_HEIGHT			= DP_BOX_TOTAL_SPACING + DP_FONT_SIZE_PX;
 
 function DP_getBoxSize(context,item)
 {
-	item.hotspot.width	= context.measureText(item.text).width + DP_BOX_TOTAL_SPACING;
+	item.hotspot.width	= context.measureText(item.name).width + DP_BOX_TOTAL_SPACING;
 	item.hotspot.height = DP_BOX_HEIGHT;
 }
 
