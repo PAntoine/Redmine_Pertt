@@ -1,0 +1,14 @@
+<h2>PerttController#Amend</h2>
+
+<%= javascript_tag do -%>
+	var testing_id = <%= raw @chart_model || "defaultVal" %>;
+<% end -%>
+
+<canvas id="<%= @canvas_id %>"></canvas>
+
+<% content_for :header_tags do %>
+    <%= stylesheet_link_tag 'perttchart.css', :plugin => 'pertt' %>
+    <%= javascript_include_tag 'perttchart.js', :plugin => 'pertt' %>
+    <%= javascript_include_tag 'drawingprimatives.js', :plugin => 'pertt' %>
+<% end %>
+

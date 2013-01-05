@@ -4,4 +4,12 @@ class PerttChart < ActiveRecord::Base
 	validates_uniqueness_of	:name, :case_sensitive => false
 
 	unloadable
+
+	def locked?
+		false
+	end
+
+	def registered?
+		false
+	end
 end

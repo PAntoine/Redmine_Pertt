@@ -1,32 +1,56 @@
 class PerttController < ApplicationController
-  unloadable
+	unloadable
 
-  def index
-	@charts = PerttChart.all
-  end
-
-  def create
-  	if request.post?
+	def index
+	  @charts = PerttChart.all
+	end
+	
+	def create
+		if request.post?
 		@chart = PerttChart.new(params[:pertt_chart])
 
-		puts '---------------------------------'
-		puts params[:pertt_chart]
-		puts '---------------------------------'
-
 		if @chart.save
-			redirect_to :action => 'index', :notice => 'Saved Ok'
+			flash[:notice] = 'Saved Ok'
+			redirect_to :action => 'index'
+		else
+			flash[:notice] = 'Did not save'
 		end
-	else
-	  	@chart = PerttChart.new
+	  else
+			@chart = PerttChart.new
+	  end
 	end
-  end
 
-  def edit
-  end
+	def edit
+		@chart = PerttChart.find(params[:id])
+	end
 
-  def update
-  end
+	def amend
+		chart = PerttChart.find(params[:id])
+		@canvas_id = chart.name.gsub(" ", "_")
 
-  def show
-  end
+		job_list = chart.pertt_jobs
+			
+		# Now build the model for the chart 
+		if job_list.length == 0
+			# empty chart - let the javascript handle initiating it
+			@chart_model = '["name":"' << chart.name << '","canvas_id":"' << @canvas_id << '","job_list":null ]'
+		else
+			# need to read the database to find the objects within the chart
+			@chart_model = '["name":"' << chart.name << '","canvas_id":"' << @canvas_id << '","job_list":['
+
+			# Now iterate over the jobs and put them into the model
+			job_list.each_with_index do |job, idx|
+			    @chart_model << job.name << ","
+			end
+
+			# end the model
+			@chart_model << "null]]"
+		end
+	end
+
+	def update
+	end
+
+	def show
+	end
 end
