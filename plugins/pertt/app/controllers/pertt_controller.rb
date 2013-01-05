@@ -33,7 +33,7 @@ class PerttController < ApplicationController
 		# Now build the model for the chart 
 		if job_list.length == 0
 			# empty chart - let the javascript handle initiating it
-			@chart_model = '["name":"' << chart.name << '","canvas_id":"' << @canvas_id << '","job_list":null ]'
+			@chart_model = 'null'
 		else
 			# need to read the database to find the objects within the chart
 			@chart_model = '["name":"' << chart.name << '","canvas_id":"' << @canvas_id << '","job_list":['

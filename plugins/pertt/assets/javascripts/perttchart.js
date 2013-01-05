@@ -848,7 +848,7 @@ function keypressHandler(e)
  * This function will initialise the canvas for drawing the pertt chart.
  * It will init the canvas and load the initial model and do the initial render.
  *--------------------------------------------------------------------------------*/
-function initialise(canvas_id)
+function initialise(canvas_id,import_chart)
 {
 	var canvas  = document.getElementById(canvas_id);
 	holding_box	= new Hotspot(0,0,0,0,null,false);
@@ -867,6 +867,10 @@ function initialise(canvas_id)
 				if (saved_chart != '')
 				{
 					LoadChart(saved_chart);
+				}
+				else if (import_chart)
+				{
+					LoadChart(import_chart);
 				}
 				else
 				{
