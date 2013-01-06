@@ -550,6 +550,8 @@ function createJob(hotspot, name, description, parameter)
 	/* now store the updated chart */
 	StoreChart();
 
+	console.debug("changes: " + GetChanges());
+
 	repaint(pertt_canvas_id);
 }
 		

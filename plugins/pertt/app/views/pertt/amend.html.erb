@@ -4,10 +4,22 @@
 <div id='popup' class="popup rounded_bottom rounded_top shadow"></div>
 <p align="center"><canvas id="<%= @canvas_id %>"></canvas></p>
 
+<div>
+<%= form_tag 'update', :id => 'save', :method => :post do %>
+	<%= hidden_field_tag 'tags_list' %>
+  	<p> <%= submit_tag 'Go' %> </p>
+<% end %>
+</div>
+</div>
+
 <%= javascript_tag do -%>
 	var pertt_canvas_id = "<%= @canvas_id %>"
 	var import_chart = <%= raw @chart_model || "null" %>;
 	initialise('<%= @canvas_id %>');
+
+	console.debug("forms: " + document.forms);
+	console.debug("save form: " + document.forms['save']);
+  	document.getElementById('tags_list').value = "peter has changed the value to what I want it to be";
 <% end -%>
 
 <% content_for :header_tags do %>
@@ -15,5 +27,5 @@
     <%= javascript_include_tag 'perttchart.js', :plugin => 'pertt' %>
     <%= javascript_include_tag 'drawingprimatives.js', :plugin => 'pertt' %>
 <% end %>
-</div>
-</div>
+
+
