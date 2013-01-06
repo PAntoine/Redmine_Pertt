@@ -221,10 +221,28 @@ function job_addNextJob(job)
 	if (this.next_job != 0)
 	{
 		job_list[this.next_job].prev_job = job.id;
+		job_list[this.next_job].amended = true;
 	}
 
 	/* now set up this object */
 	this.next_job = job.id;
+
+	/* now mark then as amended */
+	this.amended = true;
+
+}
+
+function job_addSubJob(job)
+{
+	this.streams.push(job.id);
+	this.hotspots.push(new Hotspot(0,0,0,0,this,false));
+
+	/* this has sub-jobs so not an active hotspot */
+	this.hotspot.active = false;
+	job.first_job = true;
+
+	this.terminal = false;
+	this.amended  = true;
 }
 
 function job_findPreviousJob()
@@ -435,19 +453,6 @@ function job_findAboveJob()
 	return result;
 }
 
-function job_addSubJob(job)
-{
-	this.streams.push(job.id);
-	this.hotspots.push(new Hotspot(0,0,0,0,this,false));
-
-	/* this has sub-jobs so not an active hotspot */
-	this.hotspot.active = false;
-	job.first_job = true;
-
-	this.terminal = false;
-
-}
-
 function job_getNextJob()
 {
 	return this.next_job;
@@ -507,7 +512,8 @@ function createJob(hotspot, name, description, parameter)
 	
 	new_job.id = job_list.length;
 	new_job.addHotSpot(new_hotspot);
-	
+	new_job.created = true;
+
 	switch(parameter)
 	{
 		case 'parallel':
@@ -1140,4 +1146,24 @@ function LoadChart(chart)
 	return result;
 }
 
+/*--------------------------------------------------------------------------------*
+ * GetChanges
+ * This function will return an array of the job that have changed.
+ *
+ * returns:
+ *	a JSON string of the array changes.
+ *--------------------------------------------------------------------------------*/
+function GetChanges()
+{
+	var change_list = [];
 
+	for (var index=0; index < job_list.length; index++)
+	{
+		if (job_list[index].amended || job_list[index].created || job_list[index].deleted)
+		{
+			change_list.push(job_list[index]);
+		}
+	}
+
+	return JSON.stringify(change_list,ParseObjects);
+}
