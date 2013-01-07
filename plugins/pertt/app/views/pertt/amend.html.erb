@@ -6,7 +6,7 @@
 
 <div>
 <%= form_tag 'update', :id => 'save', :method => :post do %>
-	<%= hidden_field_tag 'tags_list' %>
+	<%= hidden_field_tag 'chart_data' %>
   	<p> <%= submit_tag 'Go' %> </p>
 <% end %>
 </div>
@@ -19,7 +19,7 @@
 
 	console.debug("forms: " + document.forms);
 	console.debug("save form: " + document.forms['save']);
-  	document.getElementById('tags_list').value = "peter has changed the value to what I want it to be";
+  	document.getElementById('chart_data').value = "peter has changed the value to what I want it to be";
 <% end -%>
 
 <% content_for :header_tags do %>

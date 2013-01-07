@@ -41,7 +41,7 @@ class PerttController < ApplicationController
 
 			# Now iterate over the jobs and put them into the model
 			job_list.each_with_index do |job, idx|
-			    @chart_model << job.name << ","
+			    @chart_model << job.get_json << ","
 			end
 
 			# end the model
@@ -50,6 +50,27 @@ class PerttController < ApplicationController
 	end
 
 	def update
+		chart = PerttChart.find(params[:id])
+
+		# TODO: add the error handling
+		if (chart)
+			update_chart_data = JSON.parse(params[:chart_data])
+
+			update_chart_data.each do | changed_job |
+				if changed_job["created"]
+					# New job as been added to the chart add it here
+					chart.pertt_job.import(changed_job)
+
+				elsif changed_job["amended"]
+					# The Job has been amended now amended
+					chart.pertt_job.amend(changed_job)
+				
+				elsif changed_job["deleted"]
+					# The Job has been deleted remove
+					chart.pertt_job.delete(changed_job)
+				end
+			end
+		end
 	end
 
 	def show
