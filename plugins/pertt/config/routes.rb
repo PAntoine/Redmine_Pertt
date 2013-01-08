@@ -6,6 +6,8 @@ get '/pertt/:id/edit', :to => 'pertt#edit'
 get '/pertt/:id/show', :to => 'pertt#show'
 get	'/pertt/:id/amend', :to => 'pertt#amend'
 
+put '/pertt/edit', :to => 'pertt#edit'
+
 # update is debug and should be removed
 post '/pertt/update', :to => 'pertt#update'
 post '/pertt/create', :to => 'pertt#create'

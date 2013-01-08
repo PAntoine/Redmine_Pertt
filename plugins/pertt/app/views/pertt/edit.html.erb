@@ -1,7 +1,8 @@
 <h2>Edit Pertt Chart</h2>
 
-<%= form_for @chart, :url => '/pertt/create' do |f| %>
+<%= form_for @chart, :url => '/pertt/edit' do |f| %>
 	<div class="box tabular">
+		<%=f.hidden_field :id, :value => @chart.id %>
 		<p><%= f.label :name, 'Name' %> <%= f.text_field :name, :required => true, :size => 60 %></p>
 		<p><%= f.label :description, 'Description' %> <%= f.text_area :description, :rows => 5, :class => "span6" %></p>
 	</div>

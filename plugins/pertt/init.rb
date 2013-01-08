@@ -6,4 +6,10 @@ Redmine::Plugin.register :pertt do
   author_url 'http://github.com/PAntoine/redmine_pertt'
 
   menu :application_menu, :pertt, { :controller => 'pertt', :action => 'index' }, :caption => 'Pertt'
+
+# work for future changes
+	permission :pertt, { :pertt => [:index] }, :public => true
+	permission :create_pertt, :pertt => :create
+
+	menu :project_menu, :pertt, { :controller => 'pertt', :action => 'index' }, :caption => 'Pertt', :after => :gantt, :param => :project_id
 end
