@@ -40,7 +40,7 @@ class PerttJob < ActiveRecord::Base
 									:terminal => input_hash["terminal"],
 									:description => input_hash["description"]
 
-		# If, the job was created and there are streams with the job 
+		# If, the job was created and job has streams
 		if (@new_job && input_hash["streams"].length > 0)
 			input_hash["streams"].each do | job_id |
 				@new_job.pertt_link.create(job_id)
