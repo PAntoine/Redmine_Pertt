@@ -7,7 +7,8 @@
 <div>
 <%= form_tag 'update', :id => 'save', :method => :post do %>
 	<%= hidden_field_tag 'chart_data' %>
-  	<p> <%= submit_tag 'Go' %> </p>
+	<%= button_tag :save, :onclick => "pertt_update_field.value = GetChanges();" %>
+	<%= button_tag :discard, :onclick => "DiscardChart();" %>
 <% end %>
 </div>
 </div>
@@ -15,11 +16,11 @@
 <%= javascript_tag do -%>
 	var pertt_canvas_id = "<%= @canvas_id %>"
 	var import_chart = <%= raw @chart_model || "null" %>;
-	initialise('<%= @canvas_id %>');
+	var pertt_update_field = document.getElementById('chart_data');
+	
+	initialise('<%= @canvas_id %>',import_chart);
 
-	console.debug("forms: " + document.forms);
-	console.debug("save form: " + document.forms['save']);
-  	document.getElementById('chart_data').value = "peter has changed the value to what I want it to be";
+	pertt_update_field.value = GetChanges();
 <% end -%>
 
 <% content_for :header_tags do %>

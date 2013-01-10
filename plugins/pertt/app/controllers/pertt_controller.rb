@@ -76,7 +76,7 @@ class PerttController < ApplicationController
 			job_list = chart.pertt_jobs
 				
 			# Now build the model for the chart 
-			if job_list.length != 0
+			if job_list.length == 0
 				# empty chart - let the javascript handle initiating it
 				@chart_model = 'null'
 			else
@@ -112,6 +112,9 @@ class PerttController < ApplicationController
 			update_chart_data = JSON.parse(params[:chart_data])
 
 			update_chart_data.each do | changed_job |
+
+				puts changed_job["name"]
+
 				if changed_job["created"]
 					# New job as been added to the chart add it here
 					chart.pertt_job.import(changed_job)
