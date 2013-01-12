@@ -492,6 +492,12 @@ function Job(name,description)
 
 	/* add the methods to the object */
 	job_addMethods(this);
+
+	/* now add the job to the job list */
+	this.id = job_list.length;
+	job_list.push(this);
+
+
 }
 
 /*--------------------------------------------------------------------------------*
@@ -510,7 +516,6 @@ function createJob(hotspot, name, description, parameter)
 	var new_job = new Job(name,description);
 	var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 	
-	new_job.id = job_list.length;
 	new_job.addHotSpot(new_hotspot);
 	new_job.created = true;
 
@@ -539,9 +544,6 @@ function createJob(hotspot, name, description, parameter)
 				break;
 	}
 
-	/* add the new job to the list of jobs */
-	job_list.push(new_job);
-
 	/* been created you are now current */
 	job_list[chart_current_job].selected = false;
 	new_job.selected = true;
@@ -550,7 +552,7 @@ function createJob(hotspot, name, description, parameter)
 	/* now store the updated chart */
 	StoreChart();
 
-	console.debug("changes: " + GetChanges());
+	console.log("changes: " + GetChanges());
 
 	repaint(pertt_canvas_id);
 }
@@ -840,7 +842,7 @@ function keypressHandler(e)
 		/* TODO: hack */
 		var canvas = document.getElementById(pertt_canvas_id);
 
-		console.debug("canvas: " + canvas + "id: " + pertt_canvas_id);
+		console.log("canvas: " + canvas + "id: " + pertt_canvas_id);
 
 		switch (keycode)
 		{
@@ -869,6 +871,8 @@ function initialise(canvas_id,import_chart)
 
 		if (context)
 		{
+			console.log("about to call");
+
 			/* check to see if the job_list has been set, if not set it to the default */
 			if (job_list === undefined)
 			{
@@ -876,11 +880,12 @@ function initialise(canvas_id,import_chart)
 
 				if (saved_chart != '')
 				{
-					LoadChart(saved_chart);
+					console.log("saved chart");
+					LoadChart(saved_chart,0);
 				}
 				else if (import_chart)
 				{
-					LoadChart(import_chart);
+					LoadChart(import_chart,1);
 				}
 				else
 				{
@@ -889,32 +894,29 @@ function initialise(canvas_id,import_chart)
 					/* create the basic project */
 					var base_job = new Job('project','Project Root');
 					var new_hotspot = new Hotspot(0,0,0,0,base_job,false);
+					base_job.created = true;
 					base_job.addHotSpot(new_hotspot);
-					base_job.id = 0;
-					job_list.push(base_job);
 
 					/* now create the start job */
 					var new_job = new Job('start','start');
 					var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
+					new_job.created = true;
 					new_job.addHotSpot(new_hotspot);
-					new_job.id = 1;
 					new_job.selected = true;
 					new_job.start = true;
 					new_job.owner = 0;
 					base_job.addSubJob(new_job);
-					job_list.push(new_job);
 
 					chart_current_job = 1;
 
 					/* now create the end job */
 					var end_job = new Job('end','end of project');
 					var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
+					end_job.created = true;
 					end_job.addHotSpot(new_hotspot);
-					end_job.id = 2;
 					end_job.owner = 0;
 					end_job.end = true;
 					new_job.addNextJob(end_job);
-					job_list.push(end_job);
 				}
 			}
 
@@ -1107,37 +1109,65 @@ function RetrieveChart()
  *
  * parameters:
  *	chart	string containing the JSON string with the chart data within it.
+ *	objects If importing the objects are already objects.
  *
  * returns:
  *	true if the chart was loaded successfully else, false.
  *--------------------------------------------------------------------------------*/
-function LoadChart(chart)
+function LoadChart(chart,objects)
 {
 	var result = false;
 
 	try
 	{
 		/* load the chart */
-		job_list = JSON.parse(chart);
+		if (objects)
+		{
+			/* if the list ends with a null remove it */
+			if (chart.length > 1 && chart[chart.length - 1] == null)
+			{
+				console.log("chart length = " + chart.length);
+				job_list = chart.slice(0,chart.length - 1);
+				console.log("job_length length = " + job_list.length);
+			}
+			else
+			{
+				job_list = chart;
+			}
+		}
+		else
+		{
+			/* parse the saved string */
+			job_list = JSON.parse(chart);
+		}
+
+		console.log("job_list length = " + job_list.length);
 
 		/* need to fixup the hotspots as these are not saved with the chart */
 		for (var index=0; index < job_list.length; index++)
 		{
-			/* add the methods to the job */
-			job_addMethods(job_list[index]);
+			console.log("job_list[" + index + "] = " + job_list[index]);
 
-			/* add the jobs hotspot */
-			var active = (job_list[index].streams.length == 0);
-			job_list[index].hotspot = new Hotspot(0,0,0,0,job_list[index],active);
-
-			/* now add the hotspots for the streams */
-			for (var stream_no=0; stream_no < job_list[index].streams.length; stream_no++)
+			if (job_list[index] != null)
 			{
-				job_list[index].hotspots.push(new Hotspot(0,0,0,0,this,false));
-			}
+				/* add the methods to the job */
+				job_addMethods(job_list[index]);
 
-			if (job_list[index].selected)
-				chart_current_job = index;
+				/* add the jobs hotspot */
+				var active = (job_list[index].streams.length == 0);
+				job_list[index].hotspot = new Hotspot(0,0,0,0,job_list[index],active);
+
+				/* now add the hotspots for the streams */
+				job_list[index].hotspots = [];
+
+				for (var stream_no=0; stream_no < job_list[index].streams.length; stream_no++)
+				{
+					job_list[index].hotspots.push(new Hotspot(0,0,0,0,this,false));
+				}
+
+				if (job_list[index].selected)
+					chart_current_job = index;
+			}
 		}
 	}
 	catch (e)
@@ -1161,9 +1191,12 @@ function GetChanges()
 
 	for (var index=0; index < job_list.length; index++)
 	{
-		if (job_list[index].amended || job_list[index].created || job_list[index].deleted)
+		if (job_list[index] != null)
 		{
-			change_list.push(job_list[index]);
+			if (job_list[index].amended || job_list[index].created || job_list[index].deleted)
+			{
+				change_list.push(job_list[index]);
+			}
 		}
 	}
 

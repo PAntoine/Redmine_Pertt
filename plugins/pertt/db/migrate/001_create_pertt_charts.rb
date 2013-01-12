@@ -19,11 +19,14 @@
 class CreatePerttCharts < ActiveRecord::Migration
   def up
     create_table :pertt_charts, :force => true do |t|
+		t.integer	:id
 		t.string	:name, 			:null => false
 		t.string	:description,	:null => false
     end
 
 	create_table :pertt_jobs, :force => true do |t|
+		t.integer	:id
+		t.integer	:index,			:null => false
 		t.integer	:pertt_chart_id,:null => false
 		t.string	:name,			:null => false
 		t.integer	:owner,			:null => false
@@ -35,6 +38,7 @@ class CreatePerttCharts < ActiveRecord::Migration
 	end
 
 	create_table :pertt_links, :force => true do |t|
+		t.integer	:id
 		t.integer	:pertt_job_id,	:null => false
 		t.integer	:job_id,		:null => false
 	end

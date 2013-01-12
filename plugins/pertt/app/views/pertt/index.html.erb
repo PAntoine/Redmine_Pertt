@@ -15,7 +15,6 @@
 		<tr class="user <%= cycle("odd", "even") %>">
 		<td class="name"><%= link_to h(chart.name), { :id => chart.id, :action => 'edit'} %></td>
 		<td class="buttons">
-			<%= change_status_link(chart) %>
 			<%= link_to 'Amend', { :id => chart.id, :action => 'amend' } , { :class => 'icon icon-edit' } %>
 			<%= delete_link pertt_chart_path(chart) %>
 		</td>

@@ -16,37 +16,39 @@
 #---------------------------------------------------------------------------------
 class PerttJob < ActiveRecord::Base
 	has_many	:pertt_links, :dependent => :destroy
-	belongs_to	:pertt_chart, :inverse_of => pertt_job
-	validates_presence_of :name, :pertt_chart_id, :owner, :pertt_job_id
-	validates_uniqueness_of :pertt_job_id, :scope => :pertt_chart_id
+	belongs_to	:pertt_chart, :inverse_of => :pertt_job
+	validates_presence_of :name, :pertt_chart_id, :owner
+	validates_uniqueness_of :index, :scope => :pertt_chart_id
 
-	##
-	# import
-	# 
-	# This function will create a new job from the given hash.
-	# 
-	# parameter:
-	#
-	# 	input_hash	The input has that has been sent from the javascript
-	# 				that defines the job that needs to be added to the
-	# 				database.
-	#
-	def import (input_hash)
-		new_job = pertt_job.create	:id => input_hash["id"],
-									:name => input_hash["name"],
-									:owner => input_hash["owner"],
-									:prev_job => input_hash["prev_job"],
-									:next_job => input_hash["next_job"],
-									:is_terminal => input_hash["terminal"],
-									:description => input_hash["description"]
-
-		# If, the job was created and there are streams with the job 
-		if (new_job && input_hash["streams"].length > 0)
-			input_hash["streams"].each do | job_id |
-				new_job.pertt_link.create(job_id)
-			end
-		end
-	end
+#	##
+#	# import
+#	# 
+#	# This function will create a new job from the given hash.
+#	# 
+#	# parameter:
+#	#
+#	# 	input_hash	The input has that has been sent from the javascript
+#	# 				that defines the job that needs to be added to the
+#	# 				database.
+#	#
+#	def self.import (input_hash)
+#		new_job = pertt_jobs.create	:id => input_hash["id"],
+#									:name => input_hash["name"],
+#									:owner => input_hash["owner"],
+#									:prev_job => input_hash["prev_job"],
+#									:next_job => input_hash["next_job"],
+#									:is_terminal => input_hash["terminal"],
+#									:description => input_hash["description"]
+#
+#		puts input_hash["streams"]
+#
+#		# If, the job was created and there are streams with the job 
+#		if (new_job && input_hash["streams"].length > 0)
+#			input_hash["streams"].each do | job_id |
+#				new_job.pertt_links.create(job_id)
+#			end
+#		end
+#	end
 
 	##
 	# amend
@@ -61,35 +63,42 @@ class PerttJob < ActiveRecord::Base
 	# 				that defines the job that needs to be amended in the
 	# 				database.
 	#
-	def amend (input_hash)
-		old_job = pertt_job.find(:id => input_hash["id"])
+	def amend_job ( input_hash )
+		# update the job details
+		self.name = input_hash["name"]
+		self.owner = input_hash["owner"]
+		self.prev_job = input_hash["prev_job"]
+		self.next_job = input_hash["next_job"]
+		self.is_terminal = input_hash["terminal"]
+		self.description = input_hash["description"]
 
-		if (old_job)
-			# update the job details
-			old_job.id = input_hash["id"]
-			old_job.name = input_hash["name"]
-			old_job.owner = input_hash["owner"]
-			old_job.prev_job = input_hash["prev_job"]
-			old_job.next_job = input_hash["next_job"]
-			old_job.is_terminal = input_hash["terminal"]
-			old_job.description = input_hash["description"]
+		# Incase a deleted object is being reused
+		self.is_deleted = false
 
-			# Incase a deleted object is being reused
-			old_job.is_deleted = false
+		# remove the old links
+		self.pertt_links.delete_all
+	
+		puts "job: " << self.index
 
-			# remove the old links
-			old_job.pertt_link.delete_all
-		
-			# add the new ones
-			if (old_job && input_hash["streams"].length > 0)
-				input_hash["streams"].each do | job_id |
-					old_job.pertt_link.create(job_id)
-				end
+		# add the new ones
+		input_hash["streams"].each do | job_id |
+			puts "adding job: " << job_id.to_s
+
+			link = self.pertt_links.create :job_id => job_id
+
+			if link.nil?
+				puts "failed to create the link"
 			end
-
-			# save the changes
-			old_job.save
 		end
+
+		# save the changes
+		self.save
+	end
+
+	def add_streams ( streams_list )
+	
+		puts streams_list.inspect
+
 	end
 
 	##
@@ -103,7 +112,7 @@ class PerttJob < ActiveRecord::Base
 	# 				that defines the job that needs to be deleted to the
 	# 				database.
 	#
-	def delete (input_hash)
+	def self.delete (input_hash)
 		old_job = pertt_job.find(:id => input_hash["id"])
 
 		if (old_job)

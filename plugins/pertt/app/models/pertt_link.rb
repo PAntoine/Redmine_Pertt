@@ -15,5 +15,5 @@
 #                    Released Under the Artistic Licence
 #---------------------------------------------------------------------------------
 class PerttLink < ActiveRecord::Base
-	belongs_to	:pertt_job, :inverse_of => pertt_links
+	belongs_to	:pertt_job, :inverse_of => :pertt_link
 end
