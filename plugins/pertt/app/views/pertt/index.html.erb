@@ -4,6 +4,17 @@
 
 <h2>Pertt Charts</h2>
 
+<% if session[:last_saved] != nil %>
+<%= javascript_tag do -%>
+	localStorage.removeItem("pertt_chart.<%= raw session["last_saved"] %>.open");
+	localStorage.removeItem("pertt_chart.<%= raw session["last_saved"] %>.dirty");
+	localStorage.removeItem("pertt_chart.<%= raw session["last_saved"] %>.lastupdate");
+	localStorage.removeItem("pertt_chart.<%= raw session["last_saved"] %>.chart");
+
+	<% session["last_saved"] = nil %>
+<% end -%>
+<% end %>
+
 <div class="autoscroll">
 <table class="list">
   <thead><tr>
@@ -14,7 +25,7 @@
 	<% @charts.each do |chart| %>
 		<tr class="user <%= cycle("odd", "even") %>">
 		<td class="name"><%= link_to h(chart.name), { :id => chart.id, :action => 'edit'} %></td>
-		<td class="buttons">
+		<td class="buttons center">
 			<%= link_to 'Amend', { :id => chart.id, :action => 'amend' } , { :class => 'icon icon-edit' } %>
 			<%= delete_link pertt_chart_path(chart) %>
 		</td>

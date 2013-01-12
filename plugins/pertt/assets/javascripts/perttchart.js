@@ -20,6 +20,7 @@
  * The global static items.
  *--------------------------------------------------------------------------------*/
 var job_list;
+var chart_name				= '';
 var hotspot_list			= [];
 var group_space_gap			= 30;		/* pixel space used for the group arrows */
 var chart_dirty				= false;	/* has the chart been changed */
@@ -864,6 +865,12 @@ function initialise(canvas_id,import_chart)
 {
 	var canvas  = document.getElementById(canvas_id);
 	holding_box	= new Hotspot(0,0,0,0,null,false);
+	
+	/* set the name for the storage keys */
+	if (pertt_canvas_id === undefined)
+		chart_name = "pertt_chart.default.";
+	else
+		chart_name = "pertt_chart." + pertt_canvas_id + "."
 
 	if (canvas)
 	{
@@ -1060,12 +1067,12 @@ function StoreChart()
 		/* set the time that the chart was last updated */
 		chart_dirty = true;
 		chart_updated = date.getTime();
-		localStorage["pertt_chart.open"] = '1';
-		localStorage["pertt_chart.dirty"] = '1';
-		localStorage["pertt_chart.lastupdate"] = chart_updated;
+		localStorage[chart_name + "open"] = '1';
+		localStorage[chart_name + "dirty"] = '1';
+		localStorage[chart_name + "lastupdate"] = chart_updated;
 
 		/* set the local storage to the current chart */
-		localStorage["pertt_chart.chart"] = JSON.stringify(job_list,ParseObjects);
+		localStorage[chart_name + "chart"] = JSON.stringify(job_list,ParseObjects);
 	}
 }
 
@@ -1089,16 +1096,37 @@ function RetrieveChart()
 		var date = new Date();
 
 		/* set the time that the chart was last updated */
-		if (localStorage["pertt_chart.open"] == '1')
+		if (localStorage[chart_name + "open"] == '1')
 		{
 			/* we have a stored chart */
-			chart_dirty = (localStorage["pertt_chart.dirty"] == '1');
-			chart_updated = parseInt(localStorage["pertt_chart.lastupdate"]);
-			result = localStorage["pertt_chart.chart"];
+			chart_dirty = (localStorage[chart_name + "dirty"] == '1');
+			chart_updated = parseInt(localStorage[chart_name + "lastupdate"]);
+			result = localStorage[chart_name + "chart"];
 		}
 	}
 
 	return result;
+}
+
+/*--------------------------------------------------------------------------------*
+ * ClearChartStorage
+ * This function is used clear the local storage of a chart
+ *
+ * This will use the localstorage functions of HTML5 to clear the chart storage.
+ *
+ * returns:
+ * 	nothing.
+ *--------------------------------------------------------------------------------*/
+function ClearChartStorage()
+{
+	if (SupportsHTML5Storage())
+	{
+		/* remove to items from local storage */
+		localStorage.removeItem(chart_name + "open");
+		localStorage.removeItem(chart_name + "dirty");
+		localStorage.removeItem(chart_name + "lastupdate");
+		localStorage.removeItem(chart_name + "chart");
+	}
 }
 
 /*--------------------------------------------------------------------------------*

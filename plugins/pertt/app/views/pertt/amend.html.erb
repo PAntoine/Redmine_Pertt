@@ -4,13 +4,14 @@
 <div id='popup' class="popup rounded_bottom rounded_top shadow"></div>
 <p align="center"><canvas id="<%= @canvas_id %>"></canvas></p>
 
-<div>
+<center>
 <%= form_tag 'update', :id => 'save', :method => :post do %>
 	<%= hidden_field_tag 'chart_data' %>
-	<%= button_tag :save, :onclick => "pertt_update_field.value = GetChanges();" %>
-	<%= button_tag :discard, :onclick => "DiscardChart();" %>
+	<%= button_tag :save, :name => 'save_button', :onclick => "pertt_update_field.value = GetChanges();" %>
+	<span>&nbsp;&nbsp;&nbsp;</span>
+	<%= button_tag :discard, :name => 'discard_button', :confirm => "Are You Sure?" %>
 <% end %>
-</div>
+</center>
 </div>
 
 <%= javascript_tag do -%>

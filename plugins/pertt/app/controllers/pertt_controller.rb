@@ -31,12 +31,7 @@ class PerttController < ApplicationController
 			else
 				flash[:notice] = 'Did not save'
 			end
-		elsif request.put?
-			
-			puts "chart " << @chart
-
 		else
-			puts "here"
 			@chart = PerttChart.new
 		end
 	end
@@ -90,9 +85,10 @@ class PerttController < ApplicationController
 
 				# end the model
 				@chart_model << "null]"
-
-				puts @chart_model
 			end
+		else
+			flash[:alert] = 'Could not find the chart'
+			redirect_to :action => 'index'
 		end
 	end
 
@@ -100,12 +96,18 @@ class PerttController < ApplicationController
 		if request.post?
 			chart = PerttChart.find(params[:id])
 
-			# TODO: add the error handling
-			if (chart)
+			# did the user want to dicard any changed they made?
+			if params[:discard_button] != nil
+				session[:last_saved] = chart.name.gsub(" ", "_")
+				flash[:notice] = 'Changes Discarded'
+				redirect_to :action => 'index'
+
+			elsif (chart)
 				update_chart_data = JSON.parse(params[:chart_data])
+				flash[:notice] = 'Updated OK'
 
+				# update the amended jobs
 				update_chart_data.each do | changed_job |
-
 					if changed_job["created"]
 						chart.add_job changed_job
 
@@ -116,22 +118,25 @@ class PerttController < ApplicationController
 							# The Job has been amended now amended
 							job.amend_job changed_job
 						else
-							puts "Failed to find job on amend. JobID = " << changed_job['id']
+							flash[:alert] = "Failed to find job on update. JobID = " << changed_job['id']
 						end
 					
 					elsif changed_job["deleted"]
 						# The Job has been deleted remove
 						chart.pertt_jobs.delete(changed_job)
 					else
-						puts "failed Unkownn"
+						flash[:alert] = "Failed unknown state for job"
 					end
 				end
+
+				# Update the chart ok
+				session[:last_saved] = chart.name.gsub(" ", "_")
+			else
+				flash[:alert] = 'Could not find the chart to update it'
 			end
 		else
-			puts "we dont have a post"
+			flash[:alert] = 'Internal State Error - Please try again.'
+			redirect_to :action => 'index'
 		end
-	end
-
-	def show
 	end
 end
