@@ -20,35 +20,42 @@ class PerttJob < ActiveRecord::Base
 	validates_presence_of :name, :pertt_chart_id, :owner
 	validates_uniqueness_of :index, :scope => :pertt_chart_id
 
-#	##
-#	# import
-#	# 
-#	# This function will create a new job from the given hash.
-#	# 
-#	# parameter:
-#	#
-#	# 	input_hash	The input has that has been sent from the javascript
-#	# 				that defines the job that needs to be added to the
-#	# 				database.
-#	#
-#	def self.import (input_hash)
-#		new_job = pertt_jobs.create	:id => input_hash["id"],
-#									:name => input_hash["name"],
-#									:owner => input_hash["owner"],
-#									:prev_job => input_hash["prev_job"],
-#									:next_job => input_hash["next_job"],
-#									:is_terminal => input_hash["terminal"],
-#									:description => input_hash["description"]
-#
-#		puts input_hash["streams"]
-#
-#		# If, the job was created and there are streams with the job 
-#		if (new_job && input_hash["streams"].length > 0)
-#			input_hash["streams"].each do | job_id |
-#				new_job.pertt_links.create(job_id)
-#			end
-#		end
-#	end
+	##
+	# to_json
+	# 
+	# This function will convert a job to a string. It will also product
+	# the list of streams as part of the job.
+	#
+	# NOTE: Three fields start,end,selected should be moved up to the
+	#       chart level. Need to do this after this is working.
+    #
+	# parameter:
+	# 	none
+	#
+	def to_json
+		result = ''
+
+		if self.is_deleted
+			result << "null,"
+		else
+			result <<	'{"id":"'		 << self.index.to_s			<< '",' <<
+						'"name":"'		 << self.name				<< '",' <<
+						'"owner":'		 << self.owner.to_s			<< ','	<<
+						'"prev_job":'	 << self.prev_job.to_s		<< ','	<<
+						'"next_job":'	 << self.next_job.to_s		<< ','	<<
+						'"terminal":'	 << self.is_terminal.to_s 	<< ','	<<
+						'"first_job":'	 << self.is_first_job.to_s	<< ',' <<
+						'"start":'		 << self.is_start.to_s		<< ',' <<	 
+						'"end":'		 << self.is_end.to_s		<< ',' <<	 
+						'"selected":'	 << self.is_selected.to_s	<< ',' <<
+						'"description":"'<< self.description		<< '", "streams":['
+
+			# output the stream
+			result << self.pertt_links.pluck(:job_id).join(',') << ']},'
+		end
+	
+		return result
+	end
 
 	##
 	# amend
@@ -67,9 +74,13 @@ class PerttJob < ActiveRecord::Base
 		# update the job details
 		self.name = input_hash["name"]
 		self.owner = input_hash["owner"]
+		self.is_end = input_hash["end"]
+		self.is_start = input_hash["start"]
 		self.prev_job = input_hash["prev_job"]
 		self.next_job = input_hash["next_job"]
 		self.is_terminal = input_hash["terminal"]
+		self.is_selected = input_hash["selected"]
+		self.is_first_job = input_hash["first_job"]
 		self.description = input_hash["description"]
 
 		# Incase a deleted object is being reused
@@ -78,7 +89,7 @@ class PerttJob < ActiveRecord::Base
 		# remove the old links
 		self.pertt_links.delete_all
 	
-		puts "job: " << self.index
+		puts "job: " << self.index.to_s
 
 		# add the new ones
 		input_hash["streams"].each do | job_id |
@@ -93,12 +104,6 @@ class PerttJob < ActiveRecord::Base
 
 		# save the changes
 		self.save
-	end
-
-	def add_streams ( streams_list )
-	
-		puts streams_list.inspect
-
 	end
 
 	##

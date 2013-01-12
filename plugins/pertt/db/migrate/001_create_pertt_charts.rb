@@ -30,10 +30,14 @@ class CreatePerttCharts < ActiveRecord::Migration
 		t.integer	:pertt_chart_id,:null => false
 		t.string	:name,			:null => false
 		t.integer	:owner,			:null => false
-		t.integer	:prev_job
-		t.integer	:next_job
+		t.integer	:prev_job,		:null => false
+		t.integer	:next_job,		:null => false
 		t.boolean	:is_deleted,	:null => false, :default => false
 		t.boolean	:is_terminal
+		t.boolean	:is_first_job,	:default => false
+		t.boolean	:is_start,		:default => false
+		t.boolean	:is_end,		:default => false
+		t.boolean	:is_selected,	:default => false
 		t.string	:description
 	end
 
