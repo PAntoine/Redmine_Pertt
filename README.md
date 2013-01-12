@@ -21,7 +21,7 @@ to be edited offline without internet connection and to allow for the charts to
 be updated when you user has completed the amendments they require and are back
 online.
 
-# Status #
+# Status/Things to Do #
 
 The current status of the product is a follows:
 
@@ -29,10 +29,16 @@ The current status of the product is a follows:
    Thought the structure of the job/task items may change, will need to add start
    dates and durations to them.
 
-2. The structure of the Redmine plugin has been written and the database schema to
-   hold and deliver the charts to the user has been started.
+2. Basic Drawing and Rails Integrated
+   The drawing is in the Rails/Redmine database and is served. The basic single user
+   localStorage works. The muti-user case and the amended elsewhere cases have not
+   been handled yet.
 
-3. The interaction of the Javascript to the Redmine backend is just being started.
+3. The Integration with users and the Issue Database is starting.
+
+4. Integration with the scm (git-only first) has not started.
+
+5. Change basic Javascript popup to use Redmine/Rails Modal popup - consistency of style.
 
 # Licence and copyright #
                     Copyright (c) 2012-2013  Peter Antoine
