@@ -42,14 +42,37 @@ button_text['delete'] = 'Delete Job';
 button_text['create'] = 'Create';
 
 /*--------------------------------------------------------------------------------*
+ * CalculateEndTime
+ *
+ * This function will calculate the end time of a job. It will take the start time
+ * as a unix epoc time and then calculate the end time of the job talking into 
+ * account the number of days in a week and the start day of the object.
+ *--------------------------------------------------------------------------------*/
+function CalculateEndTime(job)
+{
+	var end_time = start_time;
+
+
+
+	return end_time;
+}
+
+/*--------------------------------------------------------------------------------*
  * job
  * This is the job object constructor.
  *
  * The job object is the item that holds the issue context. The structure of the
  * job item is:
+ *
  *  name 		The is the name of the job item.
  *  owner		This is the job item that this job is a sub-item of.
+ *  job_status	The current status of the job {'waiting','started','complete'}.
+ *	duration	The estimated (or actual) length of the job.
+ *	start_date	This is the start (or estimated start) date for the job.
+ *	prev_job	The job the this is dependant on.
  *  next_job	This this is the job that follows this job.
+ *	terminal	This is a leaf (real) job.
+ *	description	This the description of the job.
  *  hotspot		This is the hotspot that this object is interacted with.
  *  streams		This is a list of jobs that are parallel jobs that are sub-jobs
  *              of this job. This is not the complete list of jobs that are owned
@@ -58,6 +81,33 @@ button_text['create'] = 'Create';
 function job_addHotSpot(hotspot)
 {
 	this.hotspot = hotspot;
+}
+
+function job_calculateEndTime()
+{
+	if (this.streams.length == 0)
+	{
+		/* ok, leaf box, just add our own size */
+		this.end_time = CalculateEndTime(this);
+	}
+	else
+	{
+		/* ok, we have sub-jobs calc the size based on this */
+		for (var index=0; index < this.streams.length; index++)
+		{
+			/* now walk down the list of boxes per level */
+			var job_id = this.streams[index];
+
+			while (job_id != 0)
+			{
+				var box = job_list[job_id];
+			
+				/* create the enclosing box */
+				box.calculateEndTime();
+				var job_id = box.getNextJob();
+			}
+		}
+	}
 }
 
 function job_calculateBoxSize(context,enclosing_hotspot)
@@ -459,6 +509,12 @@ function job_getNextJob()
 	return this.next_job;
 }
 
+function job_getDurationString()
+{
+
+
+}
+
 function job_addMethods(job)
 {
 	job.paint				= job_paint;
@@ -480,10 +536,13 @@ function Job(name,description)
 	this.owner			= 0;
 	this.next_job		= 0;
 	this.prev_job		= 0;
+	this.job_status		= 'waiting';
 	this.hotspot		= null;
 	this.terminal		= true;
 	this.first_job		= false;
-	this.duration		= "12/01/2013 - 200:45";
+	this.start_date		= (Math.round((new Date()).getTime() / 1000)/60)*60;	/* rounded to minutes */
+	this.end_date		= 253402300740;											/* 31/12/9999 */
+	this.duration		= "1440";
 	this.description	= description;
 
 	/* set the sub-items that the job have to have */
@@ -498,8 +557,6 @@ function Job(name,description)
 	/* now add the job to the job list */
 	this.id = job_list.length;
 	job_list.push(this);
-
-
 }
 
 /*--------------------------------------------------------------------------------*

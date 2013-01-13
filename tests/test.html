@@ -3,15 +3,18 @@
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
 		<link rel="stylesheet" href="../css/perttchart.css">
-		<script type='text/javascript' src='../javascript/drawingprimatives.js'></script>
-		<script type='text/javascript' src='../javascript/perttchart.js'></script>
+		<script type='text/javascript' src='../plugins/pertt/assets/javascripts/drawingprimatives.js'></script>
+		<script type='text/javascript' src='../plugins/pertt/assets/javascripts/perttchart.js'></script>
 		<title>Pertt Chart Test</title>
 	</head>
-	<bod>
+	<body>
 		<div id='popup' class="popup rounded_bottom rounded_top shadow"></div>
 
 		<canvas id='test_1'></canvas>
-		<script type="text/javascript">initialise('test_1')</script>
+		<script type="text/javascript">
+			var pertt_canvas_id = "test_1";
+			initialise('test_1',null);
+		</script>
 	</body>
 </html>
 
