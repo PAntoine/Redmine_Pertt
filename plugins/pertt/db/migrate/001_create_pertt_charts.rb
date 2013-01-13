@@ -21,6 +21,7 @@ class CreatePerttCharts < ActiveRecord::Migration
     create_table :pertt_charts, :force => true do |t|
 		t.integer	:id
 		t.integer	:project_id,	:null => false
+		t.integer	:selected,		:null => false, :default => 1
 		t.string	:name, 			:null => false
 		t.string	:description,	:null => false
     end
@@ -36,9 +37,6 @@ class CreatePerttCharts < ActiveRecord::Migration
 		t.boolean	:is_deleted,	:null => false, :default => false
 		t.boolean	:is_terminal
 		t.boolean	:is_first_job,	:default => false
-		t.boolean	:is_start,		:default => false
-		t.boolean	:is_end,		:default => false
-		t.boolean	:is_selected,	:default => false
 		t.string	:description
 	end
 

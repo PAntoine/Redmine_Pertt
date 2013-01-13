@@ -35,7 +35,7 @@ function DP_getDoubleBoxSize(context,item)
 	var text
 
 	var text_width_1 = context.measureText(item.name).width;
-	var text_width_2 = context.measureText(item.duration).width;
+	var text_width_2 = context.measureText(item.date_string).width;
 
 	if (text_width_1 > text_width_2)
 		item.hotspot.width	= text_width_1 + DP_BOX_TOTAL_SPACING;
@@ -90,7 +90,7 @@ function DP_drawBoxCurve(context,start_x,start_y,end_x,end_y)
 // Draw a box with rounded corners.
 // x,y is the top left corner.
 // This box has two lines of text.
-function DP_drawTextDoubleBoxRounded(context,x,y,text_1,text_2,selected,repaint)
+function DP_drawTextDoubleBoxRounded(context,x,y,text_1,text_2,colour,repaint)
 {
 	context.textBaseline = 'middle';
 	var height = DP_FONT_SIZE_PX * 2;
@@ -104,13 +104,7 @@ function DP_drawTextDoubleBoxRounded(context,x,y,text_1,text_2,selected,repaint)
 
 	// Ok draw and fill the circle
 	context.beginPath();
-
-	// set the colours
-	if (selected)
-		context.fillStyle   = '#ff0'; // yellow
-	else
-		context.fillStyle   = '#fff'; // white
-
+	context.fillStyle   = colour;
 	context.strokeStyle = '#000'; // black
 	context.lineWidth   = 1;
 

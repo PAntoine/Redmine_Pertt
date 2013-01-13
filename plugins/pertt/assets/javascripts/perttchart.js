@@ -25,7 +25,7 @@ var hotspot_list			= [];
 var group_space_gap			= 30;		/* pixel space used for the group arrows */
 var chart_dirty				= false;	/* has the chart been changed */
 var chart_popup_active		= false;	/* is there a popup on the screen */
-var	chart_current_job		= 0;		/* the currently selected job on the screen */
+var	chart_current_job		= 1;		/* the currently selected job on the screen */
 var chart_button_list		= [];		/* the list of buttons on the current popup */
 var chart_current_button	= 0;
 
@@ -41,6 +41,8 @@ button_text['after'] = 'Insert Dependancy Job';
 button_text['delete'] = 'Delete Job';
 button_text['create'] = 'Create';
 
+minutes_in_days = 86400;
+
 /*--------------------------------------------------------------------------------*
  * CalculateEndTime
  *
@@ -50,9 +52,45 @@ button_text['create'] = 'Create';
  *--------------------------------------------------------------------------------*/
 function CalculateEndTime(job)
 {
-	var end_time = start_time;
+	var days 		= duration / minutes_in_days;
+	var minutes		= duration % minutes_in_days;
+	var prev_end	= job.end_time;
+	
+	/* get the start time */
+	if (job.prev_job != 0)
+	{
+		var start_time = job_list[job.prev_job].start_time;
+	}
+	else
+	{
+		var start_time = job_list[job.owner].start_time;
+	}
 
+	if (days_of_weeks < 7)
+	{
+		/* if start_day != start_of_week */
+		start_day_offset = start_day - start_of_week;
 
+		/* calculate the number of weekends */
+		number_of_weeks = ((start_day_offset + days) / days_of_weeks) - 1;
+		
+		days += number_of_weeks * (7 - days_of_weeks);
+	}
+
+	/* adjust the end time */
+	job.end_time = start_time + (days * minutes_in_days) + minutes;
+
+	if (job.end_time != end_time)
+	{
+		job.amended = true;
+	}
+
+	/* now adjust the owner */
+	if (job_list[job.owner].end_time < job.end_time)
+	{
+		job_list[job.owner].amemded = true;
+		job_list[job.owner].end_time = job.end_time;
+	}
 
 	return end_time;
 }
@@ -67,7 +105,7 @@ function CalculateEndTime(job)
  *  name 		The is the name of the job item.
  *  owner		This is the job item that this job is a sub-item of.
  *  job_status	The current status of the job {'waiting','started','complete'}.
- *	duration	The estimated (or actual) length of the job.
+ *	duration	The estimated (or actual) length of the job, in minutes.
  *	start_date	This is the start (or estimated start) date for the job.
  *	prev_job	The job the this is dependant on.
  *  next_job	This this is the job that follows this job.
@@ -81,6 +119,47 @@ function CalculateEndTime(job)
 function job_addHotSpot(hotspot)
 {
 	this.hotspot = hotspot;
+}
+
+function GenerateDataString(date)
+{
+	result = date.getFullYear() + "/";
+
+	if (date.getMonth() < 9)
+		result += "0" + (date.getMonth() + 1) + "/";
+	else
+		result += (date.getMonth() + 1) + "/";
+
+	if (date.getDate() < 10)
+		result += "0" + date.getDate();
+	else
+		result += date.getDate();
+
+	return result;
+}
+
+function job_getDateString()
+{
+	var start_date = new Date(this.start_date * 1000);
+	
+	if (this.job_status == "complete")
+	{
+		string = GenerateDataString(new Date(this.start_date * 1000)) + " - " + GenerateDataString(new Date(this.end_date * 1000));
+	}
+	else
+	{
+		hours	= (this.duration % minutes_in_days) / 60;
+		string	= GenerateDataString(new Date(this.start_date * 1000)) + " - " + Math.floor(this.duration / minutes_in_days) + ":";
+
+		if (hours == 0)
+			string += "00";
+		else if (hours < 10)
+			string += "0" + hours;
+		else
+			string += hours;
+	}
+
+	return string;
 }
 
 function job_calculateEndTime()
@@ -117,6 +196,7 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 		if (this.hotspot.active)
 		{
 			/* ok, leaf box, just add our own size */
+			this.date_string = this.getDateString();
 			DP_getDoubleBoxSize(context,this);
 		}
 	}
@@ -137,7 +217,6 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 
 			/* now walk down the list of boxes per level */
 			var job_id = this.streams[index];
-
 
 			while (job_id != 0)
 			{
@@ -178,8 +257,23 @@ function job_paint(context,x,y,repaint)
 {
 	if (this.streams.length == 0)
 	{
+		var colour = '#fff';
+
+		if (this.id == chart_current_job)
+		{
+			var colour = '#ff0';
+		}
+		else
+		{
+			switch(this.job_status)
+			{
+				case 'complete':	colour = '#eee';	break;
+				case 'started':		colour = '#0f9';	break;
+			}
+		}
+
 		/* ok, leaf box, just draw it */
-		DP_drawTextDoubleBoxRounded(context,x,y,this.name,this.duration,this.selected,repaint);
+		DP_drawTextDoubleBoxRounded(context,x,y,this.name,this.date_string,colour,repaint);
 	
 		/* this is a leaf item, needs to be added to hotspot list so it can be selected */
 		this.hotspot.y = y;
@@ -205,7 +299,7 @@ function job_paint(context,x,y,repaint)
 			var job_id = this.streams[index];
 			var box = job_list[job_id];
 		
-			if (!box.start)
+			if (box.id != 1)
 			{
 				/* draw line from outer box middle to stream middle */
 				DP_drawBoxCurve(context,x,y+(this.hotspot.height/2),group_x,stream_off_y);
@@ -221,7 +315,7 @@ function job_paint(context,x,y,repaint)
 				box_x = my_x + DP_BOX_SPACING;
 				var box_y = stream_y + ((this.hotspots[index].height - box.hotspot.height) / 2);
 			
-				if (!box.start)
+				if (box.id != 1)
 				{
 					if (box.terminal)
 					{
@@ -237,7 +331,7 @@ function job_paint(context,x,y,repaint)
 				box.paint(context,box_x,box_y,false);
 		
 				/* only paint the end line if it is a real box */
-				if (!box.end && box.terminal)
+				if (box.id != 2 && box.terminal)
 				{
 					DP_drawStraightArrow(context,my_x+box.hotspot.width+DP_BOX_SPACING,stream_off_y,box_x-my_x,0,0);
 				}
@@ -248,7 +342,7 @@ function job_paint(context,x,y,repaint)
 				job_id = box.getNextJob();
 			}
 
-			if (!job_list[this.streams[index]].start)
+			if (job_list[this.streams[index]].id != 1)
 			{
 				/* draw the line from the group boundary to the box boundary */
 				DP_drawStraightArrow(context,my_x,stream_off_y,stream_off_x,0,0);
@@ -300,7 +394,7 @@ function job_findPreviousJob()
 {
 	var result = this.id;
 
-	if (!this.start)
+	if (this.id != 1)
 	{
 		var current = this.id;
 
@@ -334,7 +428,7 @@ function job_findPreviousJob()
 				}
 			}
 		}
-		while(current != 0 && job_list[current].start != true && job_list[current].terminal != true);
+		while(current != 0 && current != 1 && job_list[current].terminal != true);
 
 		result = current;
 	}
@@ -346,7 +440,7 @@ function job_findNextJob()
 {
 	var result = this.id;
 
-	if (!this.end)
+	if (this.id != 2)
 	{
 		var current = this.id;
 
@@ -374,7 +468,7 @@ function job_findNextJob()
 				current = job_list[current].streams[0];
 			}
 		}
-		while(current != 0 && job_list[current].end != true && job_list[current].terminal != true);
+		while(current != 0 && current != 2 && job_list[current].terminal != true);
 
 		result = current;
 	}
@@ -386,14 +480,14 @@ function job_findBelowJob()
 {
 	var result = this.id;
 
-	if (!this.end && !this.start)
+	if (this.id != 1 && this.id != 2)
 	{
 		var current = this.id;
 
 		do
 		{
 			/* find the first item in the stream */
-			while (!job_list[current].first_job && !job_list[current].start)
+			while (!job_list[current].first_job && current.id != 1)
 			{
 				current = job_list[current].prev_job;
 			}
@@ -427,9 +521,9 @@ function job_findBelowJob()
 				}
 			}
 		} 
-		while (current != 0 && !job_list[current].start );
+		while (current > 1);
 
-		if (!job_list[current].start)
+		if (current > 1)
 		{
 			while (!job_list[current].terminal)
 			{
@@ -447,14 +541,14 @@ function job_findAboveJob()
 {
 	var result = this.id;
 
-	if (!this.end && !this.start)
+	if (this.id > 2)
 	{
 		var current = this.id;
 
 		do
 		{
 			/* find the first item in the stream */
-			while (!job_list[current].first_job && !job_list[current].start)
+			while (!job_list[current].first_job && current != 1)
 			{
 				current = job_list[current].prev_job;
 			}
@@ -488,9 +582,9 @@ function job_findAboveJob()
 				}
 			}
 		} 
-		while (current != 0 && !job_list[current].start );
+		while (current > 1);
 
-		if (!job_list[current].start)
+		if (current != 1)
 		{
 			while (!job_list[current].terminal)
 			{
@@ -525,6 +619,7 @@ function job_addMethods(job)
 	job.findNextJob			= job_findNextJob;
 	job.findBelowJob		= job_findBelowJob;
 	job.findAboveJob		= job_findAboveJob;
+	job.getDateString		= job_getDateString;
 	job.findPreviousJob		= job_findPreviousJob;
 	job.calculateBoxSize	= job_calculateBoxSize;
 }
@@ -542,7 +637,7 @@ function Job(name,description)
 	this.first_job		= false;
 	this.start_date		= (Math.round((new Date()).getTime() / 1000)/60)*60;	/* rounded to minutes */
 	this.end_date		= 253402300740;											/* 31/12/9999 */
-	this.duration		= "1440";
+	this.duration		= "1380";
 	this.description	= description;
 
 	/* set the sub-items that the job have to have */
@@ -604,14 +699,12 @@ function createJob(hotspot, name, description, parameter)
 	}
 
 	/* been created you are now current */
-	job_list[chart_current_job].selected = false;
-	new_job.selected = true;
 	chart_current_job = new_job.id;
 
 	/* now store the updated chart */
 	StoreChart();
 
-	console.log("changes: " + GetChanges());
+	console.debug("changes: " + GetChanges());
 
 	repaint(pertt_canvas_id);
 }
@@ -716,6 +809,9 @@ function actionButtonPress(type,hotspot,parameter)
 	element.style.display = "none";
 	chart_popup_active = false;
 
+
+	console.debug("action button press");
+
 	/* now handle the action on the new window */
 	switch(type)
 	{
@@ -765,7 +861,7 @@ function showPopup(type, hotspot, target)
 	{
 		/* basic click/touch on an element */
 		case 'select':	html_text = "amend: " + hotspot_list[hotspot].job.name + "<p>";
-						if (hotspot_list[hotspot].job.start)
+						if (hotspot_list[hotspot].job.id == 1)
 						{
 							html_text += createButton('after',hotspot,0);
 						}
@@ -864,7 +960,7 @@ function touchListenerFunction(e)
 		if (((hotspot_list[index].x <= mouse_x) && (mouse_x <= (hotspot_list[index].x + hotspot_list[index].width))) &&
 		    ((hotspot_list[index].y <= mouse_y) && (mouse_y <= (hotspot_list[index].y + hotspot_list[index].height))))
 		{
-			if (!hotspot_list[index].job.end)
+			if (!hotspot_list[index].job.id == 2)
 			{
 				showPopup('select',index,e.target);
 			}
@@ -883,6 +979,7 @@ function keypressHandler(e)
 
 	var keycode = event.charCode || event.keyCode;
 	
+	console.debug("keypress");
 
 	if (chart_popup_active)
 	{
@@ -901,7 +998,7 @@ function keypressHandler(e)
 		/* TODO: hack */
 		var canvas = document.getElementById(pertt_canvas_id);
 
-		console.log("canvas: " + canvas + "id: " + pertt_canvas_id);
+		console.debug("canvas: " + canvas + "id: " + pertt_canvas_id);
 
 		switch (keycode)
 		{
@@ -936,7 +1033,7 @@ function initialise(canvas_id,import_chart)
 
 		if (context)
 		{
-			console.log("about to call");
+			console.debug("about to call");
 
 			/* check to see if the job_list has been set, if not set it to the default */
 			if (job_list === undefined)
@@ -945,7 +1042,7 @@ function initialise(canvas_id,import_chart)
 
 				if (saved_chart != '')
 				{
-					console.log("saved chart");
+					console.debug("saved chart");
 					LoadChart(saved_chart,0);
 				}
 				else if (import_chart)
@@ -967,10 +1064,9 @@ function initialise(canvas_id,import_chart)
 					var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 					new_job.created = true;
 					new_job.addHotSpot(new_hotspot);
-					new_job.selected = true;
-					new_job.start = true;
 					new_job.owner = 0;
 					base_job.addSubJob(new_job);
+					new_job.job_status = 'started';
 
 					chart_current_job = 1;
 
@@ -978,9 +1074,9 @@ function initialise(canvas_id,import_chart)
 					var end_job = new Job('end','end of project');
 					var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
 					end_job.created = true;
+					end_job.job_status = 'complete';
 					end_job.addHotSpot(new_hotspot);
 					end_job.owner = 0;
-					end_job.end = true;
 					new_job.addNextJob(end_job);
 				}
 			}
@@ -1051,13 +1147,13 @@ function ChangeSelection(canvas,new_selection)
 
 		if (context)
 		{
+			var old_job = chart_current_job;
+			chart_current_job = new_selection;
+
 			/* remove selection from the old - and repaint */
-			job_list[chart_current_job].selected = false;
-			job_list[chart_current_job].paint(context,job_list[chart_current_job].hotspot.x,job_list[chart_current_job].hotspot.y,true);
+			job_list[old_job].paint(context,job_list[old_job].hotspot.x,job_list[old_job].hotspot.y,true);
 
 			/* select the new - repaint */
-			chart_current_job = new_selection;
-			job_list[chart_current_job].selected = true;
 			job_list[chart_current_job].paint(context,job_list[chart_current_job].hotspot.x,job_list[chart_current_job].hotspot.y,true);
 		}
 	}
@@ -1127,6 +1223,7 @@ function StoreChart()
 		localStorage[chart_name + "open"] = '1';
 		localStorage[chart_name + "dirty"] = '1';
 		localStorage[chart_name + "lastupdate"] = chart_updated;
+		localStorage[chart_name + "current_job"] = chart_current_job;
 
 		/* set the local storage to the current chart */
 		localStorage[chart_name + "chart"] = JSON.stringify(job_list,ParseObjects);
@@ -1158,6 +1255,7 @@ function RetrieveChart()
 			/* we have a stored chart */
 			chart_dirty = (localStorage[chart_name + "dirty"] == '1');
 			chart_updated = parseInt(localStorage[chart_name + "lastupdate"]);
+			chart_current_job = localStorage[chart_name + "current_job"];
 			result = localStorage[chart_name + "chart"];
 		}
 	}
@@ -1182,6 +1280,7 @@ function ClearChartStorage()
 		localStorage.removeItem(chart_name + "open");
 		localStorage.removeItem(chart_name + "dirty");
 		localStorage.removeItem(chart_name + "lastupdate");
+		localStorage.removeItem(chart_name + "current_job");
 		localStorage.removeItem(chart_name + "chart");
 	}
 }
@@ -1211,9 +1310,9 @@ function LoadChart(chart,objects)
 			/* if the list ends with a null remove it */
 			if (chart.length > 1 && chart[chart.length - 1] == null)
 			{
-				console.log("chart length = " + chart.length);
+				console.debug("chart length = " + chart.length);
 				job_list = chart.slice(0,chart.length - 1);
-				console.log("job_length length = " + job_list.length);
+				console.debug("job_length length = " + job_list.length);
 			}
 			else
 			{
@@ -1226,12 +1325,12 @@ function LoadChart(chart,objects)
 			job_list = JSON.parse(chart);
 		}
 
-		console.log("job_list length = " + job_list.length);
+		console.debug("job_list length = " + job_list.length);
 
 		/* need to fixup the hotspots as these are not saved with the chart */
 		for (var index=0; index < job_list.length; index++)
 		{
-			console.log("job_list[" + index + "] = " + job_list[index]);
+			console.debug("job_list[" + index + "] = " + job_list[index]);
 
 			if (job_list[index] != null)
 			{
@@ -1249,9 +1348,6 @@ function LoadChart(chart,objects)
 				{
 					job_list[index].hotspots.push(new Hotspot(0,0,0,0,this,false));
 				}
-
-				if (job_list[index].selected)
-					chart_current_job = index;
 			}
 		}
 	}
