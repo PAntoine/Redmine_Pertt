@@ -1,6 +1,6 @@
 <% if User.current.allowed_to?(:manage_pertt, @project) %>
 	<div class="contextual">
-		<%= link_to 'chart create', { :action => 'create', :project_id => @project.id } , { :class => 'icon icon-add' } %>
+		<%= link_to 'chart create', { :action => 'new', :project_id => @project.id } , { :class => 'icon icon-add' } %>
 	</div>
 <% end %>
 

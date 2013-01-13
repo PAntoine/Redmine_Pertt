@@ -17,24 +17,32 @@
 class PerttController < ApplicationController
 	unloadable
 
-	before_filter :find_project, :authorize
+	before_filter :find_project, :authorize, :only => [ :index, :create, :new ]
+	before_filter :find_chart, :authorize, :only => [ :edit, :amend, :update ]
 
 	def index
 	  @charts = PerttChart.all
 	end
 	
+	def new
+		if request.get?
+			@chart = PerttChart.new
+			@chart.project_id = @project.id
+		end
+	end
+
 	def create
 		if request.post?
 			@chart = PerttChart.new(params[:pertt_chart])
+			@chart.project_id = @project.id
 
 			if @chart.save
 				flash[:notice] = 'Saved Ok'
-				redirect_to :action => 'index'
+				redirect_to :action => 'index', :project_id => @project.id
 			else
-				flash[:notice] = 'Did not save'
+				flash[:alert] = 'Did not save'
+				redirect_to :action => 'new', :project_id => @project.id
 			end
-		else
-			@chart = PerttChart.new
 		end
 	end
 
@@ -57,7 +65,7 @@ class PerttController < ApplicationController
 			end
 
 			# Ok, we have saved it
-			redirect_to :action => 'index'
+			redirect_to :action => 'index', :project_id => @project.id
 		else
 			@chart = PerttChart.find(params[:id])
 		end
@@ -90,7 +98,7 @@ class PerttController < ApplicationController
 			end
 		else
 			flash[:alert] = 'Could not find the chart'
-			redirect_to :action => 'index'
+			redirect_to :action => 'index', :project_id => @project.id
 		end
 	end
 
@@ -102,7 +110,7 @@ class PerttController < ApplicationController
 			if params[:discard_button] != nil
 				session[:last_saved] = chart.name.gsub(" ", "_")
 				flash[:notice] = 'Changes Discarded'
-				redirect_to :action => 'index'
+				redirect_to :action => 'index', :project_id => @project.id
 
 			elsif (chart)
 				update_chart_data = JSON.parse(params[:chart_data])
@@ -138,7 +146,7 @@ class PerttController < ApplicationController
 			end
 		else
 			flash[:alert] = 'Internal State Error - Please try again.'
-			redirect_to :action => 'index'
+			redirect_to :action => 'index', :project_id => @project.id
 		end
 	end
 
@@ -147,5 +155,10 @@ class PerttController < ApplicationController
 	def find_project
 		# @project variable must be set before calling the authorize filter
 		@project = Project.find(params[:project_id])
+	end
+
+	def find_chart
+		@chart = PerttChart.find(params[:id])
+		@project = Project.find(@chart.project_id)
 	end
 end

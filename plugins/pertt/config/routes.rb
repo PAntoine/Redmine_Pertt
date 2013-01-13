@@ -1,7 +1,7 @@
 # Plugin's routes
 # See: http://guides.rubyonrails.org/routing.html
 get '/pertt', :to => 'pertt#index'
-get '/pertt/create', :to => 'pertt#create'
+get '/pertt/new', :to => 'pertt#new'
 get '/pertt/:id/edit', :to => 'pertt#edit'
 get '/pertt/:id/show', :to => 'pertt#show'
 get	'/pertt/:id/amend', :to => 'pertt#amend'

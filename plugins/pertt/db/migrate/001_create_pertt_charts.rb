@@ -20,6 +20,7 @@ class CreatePerttCharts < ActiveRecord::Migration
   def up
     create_table :pertt_charts, :force => true do |t|
 		t.integer	:id
+		t.integer	:project_id,	:null => false
 		t.string	:name, 			:null => false
 		t.string	:description,	:null => false
     end
