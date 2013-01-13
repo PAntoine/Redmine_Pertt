@@ -5,11 +5,11 @@ Redmine::Plugin.register :pertt do
   version '0.0.1'
   author_url 'http://github.com/PAntoine/redmine_pertt'
 
-  menu :application_menu, :pertt, { :controller => 'pertt', :action => 'index' }, :caption => 'Pertt'
-
-# work for future changes
-	permission :pertt, { :pertt => [:index] }, :public => true
-	permission :create_pertt, :pertt => :create
+	project_module :pertt do
+		permission :pertt, { :pertt => [:index] }, :public => true
+		permission :amend_pertt, {:pertt => [:edit, :amend, :update, :edit]}, :require => :member
+		permission :manage_pertt,{:pertt => [:delete, :create]}, :require => :member
+	end
 
 	menu :project_menu, :pertt, { :controller => 'pertt', :action => 'index' }, :caption => 'Pertt', :after => :gantt, :param => :project_id
 end

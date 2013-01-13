@@ -3,7 +3,7 @@
 <%= form_for @chart, :url => '/pertt/create' do |f| %>
 	<div class="box tabular">
 		<p><%= f.label :name, 'Name' %> <%= f.text_field :name, :required => true, :size => 60 %></p>
-		<p><%= f.label :description, 'Description' %> <%= f.text_area :description, :rows => 5, :class => "span6" %></p>
+		<p><%= f.label :description, 'Description' %> <%= f.text_area :description, :cols => 60, :rows => 5, :class => "span6" %></p>
 	</div>
 
 	<div class="actions">

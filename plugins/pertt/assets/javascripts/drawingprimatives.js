@@ -22,12 +22,30 @@ var DP_BOX_SPACING			= DP_BOX_CORNER_RADIUS;			/* space between the box and the 
 var DP_BOX_TOTAL_SPACING	= DP_BOX_SPACING * 2;			/* total whitespace on both sides */
 var DP_FONT_SIZE_PX			= 10;
 var DP_BOX_HEIGHT			= DP_BOX_TOTAL_SPACING + DP_FONT_SIZE_PX;
+var DP_DOUBLE_BOX_HEIGHT	= DP_BOX_TOTAL_SPACING + DP_FONT_SIZE_PX + DP_FONT_SIZE_PX;
 
 function DP_getBoxSize(context,item)
 {
 	item.hotspot.width	= context.measureText(item.name).width + DP_BOX_TOTAL_SPACING;
 	item.hotspot.height = DP_BOX_HEIGHT;
 }
+
+function DP_getDoubleBoxSize(context,item)
+{
+	var text
+
+	var text_width_1 = context.measureText(item.name).width;
+	var text_width_2 = context.measureText(item.duration).width;
+
+	if (text_width_1 > text_width_2)
+		item.hotspot.width	= text_width_1 + DP_BOX_TOTAL_SPACING;
+	else
+		item.hotspot.width	= text_width_2 + DP_BOX_TOTAL_SPACING;
+
+
+	item.hotspot.height = DP_DOUBLE_BOX_HEIGHT;
+}
+
 
 function DP_drawFlatArrow(context,x,y,length,pointers)
 {
@@ -67,6 +85,62 @@ function DP_drawBoxCurve(context,start_x,start_y,end_x,end_y)
     context.moveTo(start_x,start_y);
     context.bezierCurveTo(inflection_x,start_y,inflection_x,end_y,end_x,end_y);
     context.stroke();
+}
+
+// Draw a box with rounded corners.
+// x,y is the top left corner.
+// This box has two lines of text.
+function DP_drawTextDoubleBoxRounded(context,x,y,text_1,text_2,selected,repaint)
+{
+	context.textBaseline = 'middle';
+	var height = DP_FONT_SIZE_PX * 2;
+	var text_width_1 = context.measureText(text_1).width;
+	var text_width_2 = context.measureText(text_2).width;
+
+	if (text_width_1 > text_width_2)
+		var width = text_width_1;
+	else
+		var width = text_width_2;
+
+	// Ok draw and fill the circle
+	context.beginPath();
+
+	// set the colours
+	if (selected)
+		context.fillStyle   = '#ff0'; // yellow
+	else
+		context.fillStyle   = '#fff'; // white
+
+	context.strokeStyle = '#000'; // black
+	context.lineWidth   = 1;
+
+	context.arc(x + DP_BOX_CORNER_RADIUS,			y + DP_BOX_CORNER_RADIUS			,DP_BOX_CORNER_RADIUS	, Math.PI		, Math.PI * 1.5	, false);
+	context.arc(x + width + DP_BOX_CORNER_RADIUS,	y + DP_BOX_CORNER_RADIUS			,DP_BOX_CORNER_RADIUS	, Math.PI * 1.5	, 0				, false);
+	context.arc(x + width + DP_BOX_CORNER_RADIUS,	y + height + DP_BOX_CORNER_RADIUS	,DP_BOX_CORNER_RADIUS	, 0				, Math.PI * 0.5	, false);
+	context.arc(x + DP_BOX_CORNER_RADIUS,			y + height + DP_BOX_CORNER_RADIUS	,DP_BOX_CORNER_RADIUS	, Math.PI * 0.5	, Math.PI 		, false);
+	context.lineTo(x ,y + DP_BOX_CORNER_RADIUS);
+
+	/* shadows are accumulative (well at least in Firefox) so don't draw on repaint */
+	if (!repaint)
+	{
+		context.shadowColor = "rgba( 0, 0, 0, 0.3 )";
+		context.shadowOffsetX = 2;
+		context.shadowOffsetY = 2;
+		context.shadowBlur = 3;
+	}
+
+	context.stroke();
+	context.fill();
+
+	// reset the shadow before re-drawing
+	context.shadowOffsetX = 0;
+	context.shadowOffsetY = 0;
+	context.shadowBlur = 0;
+	
+	// Ok, write the text in the middle of the box
+	context.fillStyle   = '#000'; // black
+	context.fillText(text_1,x+DP_BOX_CORNER_RADIUS+((width-text_width_1)/2),y+DP_FONT_SIZE_PX-1);
+	context.fillText(text_2,x+DP_BOX_CORNER_RADIUS+((width-text_width_2)/2),y+DP_FONT_SIZE_PX+DP_FONT_SIZE_PX+2);
 }
 
 // Draw a box with rounded corners.

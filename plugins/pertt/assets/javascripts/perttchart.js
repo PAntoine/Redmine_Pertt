@@ -67,7 +67,7 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 		if (this.hotspot.active)
 		{
 			/* ok, leaf box, just add our own size */
-			DP_getBoxSize(context,this);
+			DP_getDoubleBoxSize(context,this);
 		}
 	}
 	else
@@ -129,7 +129,7 @@ function job_paint(context,x,y,repaint)
 	if (this.streams.length == 0)
 	{
 		/* ok, leaf box, just draw it */
-		DP_drawTextBoxRounded(context,x,y,this.name,this.selected,repaint);
+		DP_drawTextDoubleBoxRounded(context,x,y,this.name,this.duration,this.selected,repaint);
 	
 		/* this is a leaf item, needs to be added to hotspot list so it can be selected */
 		this.hotspot.y = y;
@@ -483,6 +483,7 @@ function Job(name,description)
 	this.hotspot		= null;
 	this.terminal		= true;
 	this.first_job		= false;
+	this.duration		= "12/01/2013 - 200:45";
 	this.description	= description;
 
 	/* set the sub-items that the job have to have */
@@ -1026,7 +1027,6 @@ function ParseObjects(key,value)
 	}
 	return value;
 }
-
 
 /*--------------------------------------------------------------------------------*
  * SupportsHTML5Storage

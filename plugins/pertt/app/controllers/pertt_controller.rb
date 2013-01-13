@@ -17,6 +17,8 @@
 class PerttController < ApplicationController
 	unloadable
 
+	before_filter :find_project, :authorize
+
 	def index
 	  @charts = PerttChart.all
 	end
@@ -138,5 +140,12 @@ class PerttController < ApplicationController
 			flash[:alert] = 'Internal State Error - Please try again.'
 			redirect_to :action => 'index'
 		end
+	end
+
+	private
+
+	def find_project
+		# @project variable must be set before calling the authorize filter
+		@project = Project.find(params[:project_id])
 	end
 end
