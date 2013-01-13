@@ -21,7 +21,7 @@ class PerttController < ApplicationController
 	before_filter :find_chart, :authorize, :only => [ :edit, :amend, :update ]
 
 	def index
-	  @charts = PerttChart.all
+	  @charts = PerttChart.find_all_by_project_id @project.id
 	end
 	
 	def new

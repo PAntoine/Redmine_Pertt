@@ -15,6 +15,7 @@
 #                    Released Under the Artistic Licence
 #---------------------------------------------------------------------------------
 class PerttChart < ActiveRecord::Base
+	belongs_to	:project, :inverse_of => :pertt_chart
 	has_many :pertt_jobs, :dependent => :destroy
 	validates_presence_of	:name, :project_id
 	validates_uniqueness_of	:name, :case_sensitive => false
