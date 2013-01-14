@@ -52,47 +52,57 @@ minutes_in_days = 86400;
  *--------------------------------------------------------------------------------*/
 function CalculateEndTime(job)
 {
-	var days 		= duration / minutes_in_days;
-	var minutes		= duration % minutes_in_days;
-	var prev_end	= job.end_time;
-	
+	var days 		= job.duration / minutes_in_days;
+	var minutes		= job.duration % minutes_in_days;
+	var prev_end	= job.end_date;
+	var date 		= new Date();
+
 	/* get the start time */
 	if (job.prev_job != 0)
 	{
-		var start_time = job_list[job.prev_job].start_time;
+		var start_date = job_list[job.prev_job].end_date;
 	}
 	else
 	{
-		var start_time = job_list[job.owner].start_time;
+		var start_date = job_list[job.owner].start_date;
 	}
 
-	if (days_of_weeks < 7)
+	console.log("start_date: " + start_date);
+
+	if (start_date != job.start_date)
 	{
-		/* if start_day != start_of_week */
-		start_day_offset = start_day - start_of_week;
-
-		/* calculate the number of weekends */
-		number_of_weeks = ((start_day_offset + days) / days_of_weeks) - 1;
-		
-		days += number_of_weeks * (7 - days_of_weeks);
-	}
-
-	/* adjust the end time */
-	job.end_time = start_time + (days * minutes_in_days) + minutes;
-
-	if (job.end_time != end_time)
-	{
+		job.start_date = start_date;
 		job.amended = true;
 	}
 
-	/* now adjust the owner */
-	if (job_list[job.owner].end_time < job.end_time)
+	/* calculate the end day */
+	date.setTime(start_date * 60 * 1000);
+	var start_day = ((date.getDay() + 7) - chart_first_day_of_week) % 7;
+	var working_days = Math.floor((job.duration / chart_minutes_per_working_day));
+	var weekends = (working_days / chart_working_days_per_week) - 1;
+
+	/* is there an extra weekends */
+	if ((start_day + (working_days % chart_working_days_per_week)) > chart_working_days_per_week)
 	{
-		job_list[job.owner].amemded = true;
-		job_list[job.owner].end_time = job.end_time;
+		weekends += 1;
 	}
 
-	return end_time;
+	/* adjust the end time */
+	job.end_date = Math.floor(start_date + (working_days + (weekends * (7 - chart_working_days_per_week))) + minutes_in_days);
+
+	if (job.end_date != prev_end)
+	{
+		job.amended = true;
+	}
+	
+	/* now adjust the owner */
+	if (job_list[job.owner].end_date < job.end_date)
+	{
+		job_list[job.owner].amemded = true;
+		job_list[job.owner].end_date = job.end_date;
+	}
+	
+	return job.end_date;
 }
 
 /*--------------------------------------------------------------------------------*
@@ -144,12 +154,12 @@ function job_getDateString()
 	
 	if (this.job_status == "complete")
 	{
-		string = GenerateDataString(new Date(this.start_date * 1000)) + " - " + GenerateDataString(new Date(this.end_date * 1000));
+		string = GenerateDataString(start_date) + " - " + GenerateDataString(new Date(this.end_date * 1000));
 	}
 	else
 	{
 		hours	= (this.duration % minutes_in_days) / 60;
-		string	= GenerateDataString(new Date(this.start_date * 1000)) + " - " + Math.floor(this.duration / minutes_in_days) + ":";
+		string	= GenerateDataString(start_date) + " - " + Math.floor(this.duration / minutes_in_days) + ":";
 
 		if (hours == 0)
 			string += "00";
@@ -159,34 +169,9 @@ function job_getDateString()
 			string += hours;
 	}
 
+	this.date_string = string + this.duration;
+
 	return string;
-}
-
-function job_calculateEndTime()
-{
-	if (this.streams.length == 0)
-	{
-		/* ok, leaf box, just add our own size */
-		this.end_time = CalculateEndTime(this);
-	}
-	else
-	{
-		/* ok, we have sub-jobs calc the size based on this */
-		for (var index=0; index < this.streams.length; index++)
-		{
-			/* now walk down the list of boxes per level */
-			var job_id = this.streams[index];
-
-			while (job_id != 0)
-			{
-				var box = job_list[job_id];
-			
-				/* create the enclosing box */
-				box.calculateEndTime();
-				var job_id = box.getNextJob();
-			}
-		}
-	}
 }
 
 function job_calculateBoxSize(context,enclosing_hotspot)
@@ -195,8 +180,11 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 	{
 		if (this.hotspot.active)
 		{
+			/* need to calculate the end time */
+			CalculateEndTime(this);
+
 			/* ok, leaf box, just add our own size */
-			this.date_string = this.getDateString();
+			this.getDateString();
 			DP_getDoubleBoxSize(context,this);
 		}
 	}
@@ -204,6 +192,18 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 	{
 		var width = 0;
 		var height = 0;
+		var max_duration = 0;
+
+		/* get the start time */
+		/* TODO: amended flag? */
+		if (this.prev_job != 0)
+		{
+			this.start_date = job_list[this.prev_job].end_date;
+		}
+		else
+		{
+			this.start_date = job_list[this.owner].start_date;
+		}
 
 		/* ok, we have sub-jobs calc the size based on this */
 		for (var index=0; index < this.streams.length; index++)
@@ -215,17 +215,32 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			this.hotspots[index].height = 0;
 			this.hotspots[index].active = false;
 
+			console.debug("start - owner end time " + job_list[this.owner].end_date + ":" + this.owner);
+
 			/* now walk down the list of boxes per level */
 			var job_id = this.streams[index];
+
+			var stream_duration = 0;
 
 			while (job_id != 0)
 			{
 				var box = job_list[job_id];
 			
-				/* create the enclosing box */
+					/* create the enclosing box */
 				box.calculateBoxSize(context,this.hotspots[index]);
+
+				/* get the total duration of the stream */
+				stream_duration += box.duration;
+
 				this.hotspots[index].width += DP_BOX_SPACING;
 				var job_id = box.getNextJob();
+			}
+
+			console.debug("duration:" + stream_duration);
+			/* update the duration */
+			if (stream_duration > max_duration)
+			{
+				max_duration = stream_duration;
 			}
 
 			/* add to the size of the enclosing box */
@@ -237,11 +252,19 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			}
 		}
 
+		console.debug("max: " + max_duration);
+
 		/* set the size of the current hotspot */
 		this.hotspot.width = width + (group_space_gap * 2);
 		this.hotspot.height = height;
-	}
 
+		/* update the duration */
+		this.duration = max_duration;
+
+		/* update the end-time */
+		CalculateEndTime(this);
+	}
+		
 	/* adjust the size of the enclosing hotspot */
 	if (enclosing_hotspot.height < (this.hotspot.height + DP_BOX_TOTAL_SPACING))
 	{
@@ -249,6 +272,8 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 	}
 
 	enclosing_hotspot.width += this.hotspot.width;
+
+	console.debug(this.getDateString());
 
 	return this.hotspot;
 }
@@ -636,8 +661,8 @@ function Job(name,description)
 	this.terminal		= true;
 	this.first_job		= false;
 	this.start_date		= (Math.round((new Date()).getTime() / 1000)/60)*60;	/* rounded to minutes */
-	this.end_date		= 253402300740;											/* 31/12/9999 */
-	this.duration		= "1380";
+	this.end_date		= this.start_date;
+	this.duration		= 1380;
 	this.description	= description;
 
 	/* set the sub-items that the job have to have */
@@ -1310,9 +1335,7 @@ function LoadChart(chart,objects)
 			/* if the list ends with a null remove it */
 			if (chart.length > 1 && chart[chart.length - 1] == null)
 			{
-				console.debug("chart length = " + chart.length);
 				job_list = chart.slice(0,chart.length - 1);
-				console.debug("job_length length = " + job_list.length);
 			}
 			else
 			{
@@ -1325,13 +1348,9 @@ function LoadChart(chart,objects)
 			job_list = JSON.parse(chart);
 		}
 
-		console.debug("job_list length = " + job_list.length);
-
 		/* need to fixup the hotspots as these are not saved with the chart */
 		for (var index=0; index < job_list.length; index++)
 		{
-			console.debug("job_list[" + index + "] = " + job_list[index]);
-
 			if (job_list[index] != null)
 			{
 				/* add the methods to the job */

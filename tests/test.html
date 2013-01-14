@@ -12,8 +12,26 @@
 
 		<canvas id='test_1'></canvas>
 		<script type="text/javascript">
+				ClearChartStorage();
+
+				var test_array = [	{	"name":"project","owner":0,"next_job":0,"prev_job":0,"job_status":"waiting","hotspot":null,"terminal":false,"first_job":false,"start_date":1358158459,
+										"end_date":1358158497,"duration":1380,"description":"Project Root","streams":[1],"hotspots":[],"id":0,"created":true,"amended":true,"end_date":1362383840.8724444,"amemded":true},
+									{	"name":"start","owner":0,"next_job":3,"prev_job":0,"job_status":"started","hotspot":null,"terminal":true,"first_job":true,"start_date":1358158459,
+										"end_date":1358158459,"duration":1380,"description":"start","streams":[],"hotspots":[],"id":1,"created":true,"amended":true,"end_date":1362383840.8724444,"date_string":"2013/01/14 - 0:23"},
+									{	"name":"end","owner":0,"next_job":0,"prev_job":3,"job_status":"complete","hotspot":null,"terminal":true,"first_job":false,"start_date":1358158497,
+										"end_date":1358158459,"duration":1380,"description":"end of project","streams":[],"hotspots":[],"id":2,"created":true,"end_date":1362383878.9906666,"amended":true,"date_string":"2013/01/14 - 2013/01/14"},
+									{	"name":"holding job","owner":0,"next_job":2,"prev_job":1,"job_status":"waiting","hotspot":null,"terminal":false,"first_job":false,"start_date":1358158459,
+										"end_date":1358158497,"duration":1380,"description":"","streams":[4,5],"hotspots":[],"id":3,"created":true,"amended":true,"end_date":1362383840.8724444,"date_string":"2013/01/14 - 0:23","amemded":true},
+									{	"name":"first holding job","owner":3,"next_job":0,"prev_job":0,"job_status":"waiting","hotspot":null,"terminal":true,"first_job":true,"start_date":1358158459,
+										"end_date":1358158497,"duration":1380,"description":"","streams":[],"hotspots":[],"id":4,"created":true,"amended":true,"end_date":1362383840.8724444,"date_string":"2013/01/14 - 0:23"},
+									{	"name":"second holding job","owner":3,"next_job":0,"prev_job":0,"job_status":"waiting","hotspot":null,"terminal":true,"first_job":true,"start_date":1358158507,
+										"end_date":1358158507,"duration":1380,"description":"","streams":[],"hotspots":[],"id":5,"created":true}];
+
 			pertt_canvas_id = 'test_1';
-			initialise('test_1',null);
+			chart_first_day_of_week = 1;
+			chart_working_days_per_week = 5;
+			chart_minutes_per_working_day = 450;
+			initialise('test_1',test_array);
 		</script>
 	</body>
 </html>
