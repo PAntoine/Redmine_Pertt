@@ -28,6 +28,7 @@ var chart_popup_active		= false;	/* is there a popup on the screen */
 var	chart_current_job		= 1;		/* the currently selected job on the screen */
 var chart_button_list		= [];		/* the list of buttons on the current popup */
 var chart_current_button	= 0;
+var date_obj				= new Date();
 
 /*--------------------------------------------------------------------------------*
  * The buttons for the popups
@@ -41,7 +42,40 @@ button_text['after'] = 'Insert Dependancy Job';
 button_text['delete'] = 'Delete Job';
 button_text['create'] = 'Create';
 
-minutes_in_days = 86400;
+seconds_in_days = 86400;
+
+/*--------------------------------------------------------------------------------*
+ * SetWeek
+ *
+ * This function will set the week variables that are used to calculate the day
+ * offsets.
+ *--------------------------------------------------------------------------------*/
+function SetWeek(start_day,week_days,day_length_mins)
+{
+	/* create the arrays that are required */
+	day_of_week = [0,0,0,0,0,0,0];
+	weekend		= [0,0,0,0,0,0,0];
+	minus_mask	= [1,0,0,0,0,0,0];
+
+	/* set the week layout */
+	for (var index=0; index < 7; index++)
+	{
+		day_of_week[index] = ((index + 7) - start_day) % 7;
+
+		if (day_of_week[index] >= week_days)
+		{
+			day_of_week[index] = 0;
+			weekend[index] = 1;
+		}
+	}
+
+	/* set the start of week */
+	start_of_week = start_day;
+	days_per_week = week_days;
+	minutes_per_day = day_length_mins;
+
+	weekend_length = 7 - days_per_week;
+}
 
 /*--------------------------------------------------------------------------------*
  * CalculateEndTime
@@ -52,57 +86,40 @@ minutes_in_days = 86400;
  *--------------------------------------------------------------------------------*/
 function CalculateEndTime(job)
 {
-	var days 		= job.duration / minutes_in_days;
-	var minutes		= job.duration % minutes_in_days;
-	var prev_end	= job.end_date;
-	var date 		= new Date();
+	var old_date = job.start_date;
 
 	/* get the start time */
 	if (job.prev_job != 0)
 	{
-		var start_date = job_list[job.prev_job].end_date;
+		job.start_date = job_list[job.prev_job].end_date;
 	}
 	else
 	{
-		var start_date = job_list[job.owner].start_date;
+		job.start_date = job_list[job.owner].start_date;
 	}
 
-	console.log("start_date: " + start_date);
-
-	if (start_date != job.start_date)
-	{
-		job.start_date = start_date;
-		job.amended = true;
-	}
-
-	/* calculate the end day */
-	date.setTime(start_date * 60 * 1000);
-	var start_day = ((date.getDay() + 7) - chart_first_day_of_week) % 7;
-	var working_days = Math.floor((job.duration / chart_minutes_per_working_day));
-	var weekends = (working_days / chart_working_days_per_week) - 1;
-
-	/* is there an extra weekends */
-	if ((start_day + (working_days % chart_working_days_per_week)) > chart_working_days_per_week)
-	{
-		weekends += 1;
-	}
-
-	/* adjust the end time */
-	job.end_date = Math.floor(start_date + (working_days + (weekends * (7 - chart_working_days_per_week))) + minutes_in_days);
-
-	if (job.end_date != prev_end)
+	if (old_date != job.start_date)
 	{
 		job.amended = true;
 	}
+
+	date_obj.setTime(job.start_date * 1000);
 	
-	/* now adjust the owner */
-	if (job_list[job.owner].end_date < job.end_date)
+	var start_day	= date_obj.getDay();
+	var days        = Math.floor(job.duration / minutes_per_day);
+	var weekends    = Math.floor(((day_of_week[start_day] + days) / days_per_week) + weekend[start_day]);
+	var end_day     = Math.floor((day_of_week[start_day] + days) % days_per_week);
+
+	/* if 1 or more 1 working weeks, and the week starts on the first day of the week
+	 * then the count will include one too many weekends. Needs to be removed.
+	 */
+	if (weekends > 0)
 	{
-		job_list[job.owner].amemded = true;
-		job_list[job.owner].end_date = job.end_date;
+		weekends -= minus_mask[end_day];
 	}
-	
-	return job.end_date;
+
+	/* add the duration in working time to the start time */
+	job.end_date = job.start_date + ((days + (weekends * weekend_length)) * seconds_in_days);
 }
 
 /*--------------------------------------------------------------------------------*
@@ -158,18 +175,13 @@ function job_getDateString()
 	}
 	else
 	{
-		hours	= (this.duration % minutes_in_days) / 60;
-		string	= GenerateDataString(start_date) + " - " + Math.floor(this.duration / minutes_in_days) + ":";
-
-		if (hours == 0)
-			string += "00";
-		else if (hours < 10)
-			string += "0" + hours;
-		else
-			string += hours;
+		console.log("duration:" + this.duration);
+		hours	= (this.duration % seconds_in_days) / (60 * 60);
+		string	= GenerateDataString(start_date) + " - " + Math.floor(this.duration / seconds_in_days) + ":";
+		string	+= ((this.duration % minutes_per_day) / 60).toFixed(2);
 	}
 
-	this.date_string = string + this.duration;
+	this.date_string = string;
 
 	return string;
 }
@@ -215,7 +227,6 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			this.hotspots[index].height = 0;
 			this.hotspots[index].active = false;
 
-			console.debug("start - owner end time " + job_list[this.owner].end_date + ":" + this.owner);
 
 			/* now walk down the list of boxes per level */
 			var job_id = this.streams[index];
@@ -236,7 +247,6 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 				var job_id = box.getNextJob();
 			}
 
-			console.debug("duration:" + stream_duration);
 			/* update the duration */
 			if (stream_duration > max_duration)
 			{
@@ -252,7 +262,6 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			}
 		}
 
-		console.debug("max: " + max_duration);
 
 		/* set the size of the current hotspot */
 		this.hotspot.width = width + (group_space_gap * 2);
@@ -272,8 +281,6 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 	}
 
 	enclosing_hotspot.width += this.hotspot.width;
-
-	console.debug(this.getDateString());
 
 	return this.hotspot;
 }
@@ -662,7 +669,7 @@ function Job(name,description)
 	this.first_job		= false;
 	this.start_date		= (Math.round((new Date()).getTime() / 1000)/60)*60;	/* rounded to minutes */
 	this.end_date		= this.start_date;
-	this.duration		= 1380;
+	this.duration		= minutes_per_day;			/* 23:00 hours in seconds */
 	this.description	= description;
 
 	/* set the sub-items that the job have to have */
@@ -729,7 +736,6 @@ function createJob(hotspot, name, description, parameter)
 	/* now store the updated chart */
 	StoreChart();
 
-	console.debug("changes: " + GetChanges());
 
 	repaint(pertt_canvas_id);
 }
@@ -835,7 +841,6 @@ function actionButtonPress(type,hotspot,parameter)
 	chart_popup_active = false;
 
 
-	console.debug("action button press");
 
 	/* now handle the action on the new window */
 	switch(type)
@@ -1004,7 +1009,6 @@ function keypressHandler(e)
 
 	var keycode = event.charCode || event.keyCode;
 	
-	console.debug("keypress");
 
 	if (chart_popup_active)
 	{
@@ -1023,7 +1027,6 @@ function keypressHandler(e)
 		/* TODO: hack */
 		var canvas = document.getElementById(pertt_canvas_id);
 
-		console.debug("canvas: " + canvas + "id: " + pertt_canvas_id);
 
 		switch (keycode)
 		{
@@ -1052,14 +1055,15 @@ function initialise(canvas_id,import_chart)
 	else
 		chart_name = "pertt_chart." + pertt_canvas_id + "."
 
+	/* test debug */
+	SetWeek(1,5,27000);
+
 	if (canvas)
 	{
 		var context = canvas.getContext('2d');
 
 		if (context)
 		{
-			console.debug("about to call");
-
 			/* check to see if the job_list has been set, if not set it to the default */
 			if (job_list === undefined)
 			{
@@ -1067,7 +1071,6 @@ function initialise(canvas_id,import_chart)
 
 				if (saved_chart != '')
 				{
-					console.debug("saved chart");
 					LoadChart(saved_chart,0);
 				}
 				else if (import_chart)
@@ -1108,6 +1111,13 @@ function initialise(canvas_id,import_chart)
 
 			/* calculate the box sizes - this will need to be done once from the top level */
 			job_list[0].calculateBoxSize(context,holding_box);
+
+
+			for (var i = 0; i < job_list.length ; i++)
+			{
+				console.log("job[" + job_list[i].id + "] s:" + job_list[i].start_date + " e:" + job_list[i].end_date +
+							" o:" + job_list[i].owner + " n:" + job_list[i].next_job + " " + job_list[i].name);
+			}
 
 			/* set the canvas size to that of the toplevel box */
 			canvas.width	= job_list[0].hotspot.width;
