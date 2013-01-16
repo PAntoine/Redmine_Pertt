@@ -50,7 +50,7 @@ seconds_in_days = 86400;
  * This function will set the week variables that are used to calculate the day
  * offsets.
  *--------------------------------------------------------------------------------*/
-function SetWeek(start_day,week_days,day_length_mins)
+function SetWeek(start_day,week_days,day_length_secs)
 {
 	/* create the arrays that are required */
 	day_of_week = [0,0,0,0,0,0,0];
@@ -72,7 +72,7 @@ function SetWeek(start_day,week_days,day_length_mins)
 	/* set the start of week */
 	start_of_week = start_day;
 	days_per_week = week_days;
-	minutes_per_day = day_length_mins;
+	secoonds_per_day = day_length_secs;
 
 	weekend_length = 7 - days_per_week;
 }
@@ -106,7 +106,7 @@ function CalculateEndTime(job)
 	date_obj.setTime(job.start_date * 1000);
 	
 	var start_day	= date_obj.getDay();
-	var days        = Math.floor(job.duration / minutes_per_day);
+	var days        = Math.floor(job.duration / secoonds_per_day);
 	var weekends    = Math.floor(((day_of_week[start_day] + days) / days_per_week) + weekend[start_day]);
 	var end_day     = Math.floor((day_of_week[start_day] + days) % days_per_week);
 
@@ -148,7 +148,7 @@ function job_addHotSpot(hotspot)
 	this.hotspot = hotspot;
 }
 
-function GenerateDataString(date)
+function GenerateDateString(date)
 {
 	result = date.getFullYear() + "/";
 
@@ -171,14 +171,14 @@ function job_getDateString()
 	
 	if (this.job_status == "complete")
 	{
-		string = GenerateDataString(start_date) + " - " + GenerateDataString(new Date(this.end_date * 1000));
+		string = GenerateDateString(start_date) + " - " + GenerateDateString(new Date(this.end_date * 1000));
 	}
 	else
 	{
 		console.log("duration:" + this.duration);
 		hours	= (this.duration % seconds_in_days) / (60 * 60);
-		string	= GenerateDataString(start_date) + " - " + Math.floor(this.duration / seconds_in_days) + ":";
-		string	+= ((this.duration % minutes_per_day) / 60).toFixed(2);
+		string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / seconds_in_days) + ":";
+		string	+= ((this.duration % secoonds_per_day) / 60).toFixed(2);
 	}
 
 	this.date_string = string;
@@ -452,7 +452,7 @@ function job_findPreviousJob()
 					{
 						current = job_list[current].next_job;
 
-						if (job_list[current].streams.length != 0)
+						if (job_list[current].streams.length > 0)
 						{
 							current = job_list[current].streams[0];
 						}
@@ -460,7 +460,7 @@ function job_findPreviousJob()
 				}
 			}
 		}
-		while(current != 0 && current != 1 && job_list[current].terminal != true);
+		while(current > 1 && job_list[current].terminal != true);
 
 		result = current;
 	}
@@ -669,7 +669,7 @@ function Job(name,description)
 	this.first_job		= false;
 	this.start_date		= (Math.round((new Date()).getTime() / 1000)/60)*60;	/* rounded to minutes */
 	this.end_date		= this.start_date;
-	this.duration		= minutes_per_day;			/* 23:00 hours in seconds */
+	this.duration		= secoonds_per_day;			/* 23:00 hours in seconds */
 	this.description	= description;
 
 	/* set the sub-items that the job have to have */
@@ -684,6 +684,133 @@ function Job(name,description)
 	/* now add the job to the job list */
 	this.id = job_list.length;
 	job_list.push(this);
+}
+
+/*--------------------------------------------------------------------------------*
+ * deleteJob
+ * This function will delete a job and handle the clean up.
+ * The does not actually delete the job from the list but marks it as deleted so
+ * that the server can handle removing the job from the database.
+ *--------------------------------------------------------------------------------*/
+function deleteJob(job)
+{
+	/* mark it a deleted */
+	job.deleted = true;
+
+	/* move the selected pointer */
+	if (job.id == chart_current_job)
+	{
+		chart_current_job = job.findPreviousJob();
+	}
+
+	if (job.prev_job != 0)
+	{
+		/* this is an easy delete, just remove it from the linked list */
+		job_list[job.prev_job].next_job = job.next;
+
+		if (job_list[job.next_job] != 0)
+		{
+			job_list[job.next_job].prev_job = job.prev_job;
+		}
+	}
+	else
+	{
+		/* painful delete have to play with the owner */
+		for (var index=0; index < job_list[job.owner].streams.length; index++)
+		{
+			if (job_list[job.owner].streams[index] == job.id)
+			{
+				/* ok, we have found the one we want - hotspot_list is tided in repaint */
+				job_list[job.owner].streams.splice(index,1);
+				job_list[job.owner].hotspots.splice(index,1);
+				break;
+			}
+		}
+
+		if (job_list[job.owner].streams.length == 0)
+		{
+			/* ok, we are now a terminal job */
+			job_list[job.owner].terminal = true;
+		}
+	}
+
+	/* now store the updated chart */
+	StoreChart();
+	repaint(pertt_canvas_id);
+}
+
+/*--------------------------------------------------------------------------------*
+ * insertBeforeJob
+ * This function will insert a job before the target job.
+ *
+ * vars:
+ * 	target_job	- this is the job that is to have the item iserted relative to.
+ * 	job			- this is the job that is to be inserted.
+ *--------------------------------------------------------------------------------*/
+function insertBeforeJob(target_job,job)
+{
+	if (target_job.prev_job != 0)
+	{
+		/* easy insert - just add to the linked list */
+		job.next_job = job_list[target_job.prev_job].next_job;
+		job.prev_job = target_job.prev_job;
+
+		job_list[target_job.prev_job].next_job = job.id;
+		
+		if (target_job.next_job != 0)
+		{
+			job_list[target_job.next_job].prev_job = job.id;
+		}
+	}
+	else
+	{
+		job.next_job = target_job.next_job;
+
+		for (index=0; index < job_list[target_job.owner].streams.length; index++)
+		{
+			if (job_list[target_job.owner].streams[index] == target_job.id)
+			{
+				job_list[target_job.owner].streams[index] = job.id;
+				job_list[target_job.owner].hotspots[index] = new Hotspot(0,0,0,0,this,false);
+				break;
+			}
+		}
+	}
+	
+	/* been created you are now current */
+	chart_current_job = job.id;
+
+	/* now store the updated chart */
+	StoreChart();
+	repaint(pertt_canvas_id);
+}
+
+/*--------------------------------------------------------------------------------*
+ * insertafterJob
+ * This function will insert a job after the target job.
+ *
+ * vars:
+ * 	target_job	- this is the job that is to have the item iserted relative to.
+ * 	job			- this is the job that is to be inserted.
+ *--------------------------------------------------------------------------------*/
+function insertAfterJob(target_job,job)
+{
+	job.prev_job = target_job.id;
+	job.next_job = target_job.next_job;
+
+	if (target_job.next_job != 0)
+	{
+		job_list[target_job.next_job].prev_job = job.id;
+	}
+
+	target_job.next_job = job.id;
+	
+	/* been created you are now current */
+	chart_current_job = job.id;
+
+	/* now store the updated chart */
+	StoreChart();
+	repaint(pertt_canvas_id);
 }
 
 /*--------------------------------------------------------------------------------*
@@ -735,7 +862,6 @@ function createJob(hotspot, name, description, parameter)
 
 	/* now store the updated chart */
 	StoreChart();
-
 
 	repaint(pertt_canvas_id);
 }
@@ -1056,7 +1182,7 @@ function initialise(canvas_id,import_chart)
 		chart_name = "pertt_chart." + pertt_canvas_id + "."
 
 	/* test debug */
-	SetWeek(1,5,27000);
+	SetWeek(0,5,27000);
 
 	if (canvas)
 	{
@@ -1309,6 +1435,11 @@ function RetrieveChart()
  *--------------------------------------------------------------------------------*/
 function ClearChartStorage()
 {
+	if (pertt_canvas_id === undefined)
+		chart_name = "pertt_chart.default.";
+	else
+		chart_name = "pertt_chart." + pertt_canvas_id + "."
+
 	if (SupportsHTML5Storage())
 	{
 		/* remove to items from local storage */
