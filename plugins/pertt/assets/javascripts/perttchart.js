@@ -34,6 +34,7 @@ var date_obj				= new Date();
  * The buttons for the popups
  *--------------------------------------------------------------------------------*/
 var button_text = new Array();
+button_text['edit'] = 'Edit';
 button_text['cancel'] = 'Cancel';
 button_text['subitem'] = 'Add Sub-Job';
 button_text['parallel'] = 'Add Concurrent Job';
@@ -72,7 +73,7 @@ function SetWeek(start_day,week_days,day_length_secs)
 	/* set the start of week */
 	start_of_week = start_day;
 	days_per_week = week_days;
-	secoonds_per_day = day_length_secs;
+	seconds_per_day = day_length_secs;
 
 	weekend_length = 7 - days_per_week;
 }
@@ -106,7 +107,7 @@ function CalculateEndTime(job)
 	date_obj.setTime(job.start_date * 1000);
 	
 	var start_day	= date_obj.getDay();
-	var days        = Math.floor(job.duration / secoonds_per_day);
+	var days        = Math.floor(job.duration / seconds_per_day);
 	var weekends    = Math.floor(((day_of_week[start_day] + days) / days_per_week) + weekend[start_day]);
 	var end_day     = Math.floor((day_of_week[start_day] + days) % days_per_week);
 
@@ -178,7 +179,7 @@ function job_getDateString()
 		console.log("duration:" + this.duration);
 		hours	= (this.duration % seconds_in_days) / (60 * 60);
 		string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / seconds_in_days) + ":";
-		string	+= ((this.duration % secoonds_per_day) / 60).toFixed(2);
+		string	+= ((this.duration % seconds_per_day) / 60).toFixed(2);
 	}
 
 	this.date_string = string;
@@ -190,15 +191,12 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 {
 	if (this.streams.length == 0)
 	{
-		if (this.hotspot.active)
-		{
-			/* need to calculate the end time */
-			CalculateEndTime(this);
+		/* need to calculate the end time */
+		CalculateEndTime(this);
 
-			/* ok, leaf box, just add our own size */
-			this.getDateString();
-			DP_getDoubleBoxSize(context,this);
-		}
+		/* ok, leaf box, just add our own size */
+		this.getDateString();
+		DP_getDoubleBoxSize(context,this);
 	}
 	else
 	{
@@ -226,7 +224,6 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			this.hotspots[index].width	= 0;
 			this.hotspots[index].height = 0;
 			this.hotspots[index].active = false;
-
 
 			/* now walk down the list of boxes per level */
 			var job_id = this.streams[index];
@@ -261,7 +258,6 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 				width = this.hotspots[index].width + DP_BOX_TOTAL_SPACING;
 			}
 		}
-
 
 		/* set the size of the current hotspot */
 		this.hotspot.width = width + (group_space_gap * 2);
@@ -407,6 +403,40 @@ function job_addNextJob(job)
 	/* now mark then as amended */
 	this.amended = true;
 
+}
+
+function job_addPrevJob(job)
+{
+	job.next_job = this.id;
+	job.prev_job = this.prev_job;
+
+	if (this.prev_job != 0)
+	{
+		/* easy insert - just add to the linked list */
+		job_list[this.prev_job].next_job = job.id;
+		job_list[this.prev_job].amended = true;
+		
+		this.prev_job = job.id;
+	}
+	else
+	{
+		for (index=0; index < job_list[this.owner].streams.length; index++)
+		{
+			if (job_list[this.owner].streams[index] == this.id)
+			{
+				job_list[this.owner].streams[index] = job.id;
+				job_list[this.owner].amended = true;
+
+				job.first_job = true;
+				this.first_job = false;
+				break;
+			}
+		}
+	}
+
+	job.owner = this.owner;
+	this.prev_job = job.id;
+	this.amended = true;
 }
 
 function job_addSubJob(job)
@@ -635,18 +665,13 @@ function job_getNextJob()
 	return this.next_job;
 }
 
-function job_getDurationString()
-{
-
-
-}
-
 function job_addMethods(job)
 {
 	job.paint				= job_paint;
 	job.addSubJob			= job_addSubJob;
 	job.addHotSpot			= job_addHotSpot;
 	job.addNextJob			= job_addNextJob;
+	job.addPrevJob			= job_addPrevJob;
 	job.getNextJob			= job_getNextJob;
 	job.findNextJob			= job_findNextJob;
 	job.findBelowJob		= job_findBelowJob;
@@ -669,7 +694,7 @@ function Job(name,description)
 	this.first_job		= false;
 	this.start_date		= (Math.round((new Date()).getTime() / 1000)/60)*60;	/* rounded to minutes */
 	this.end_date		= this.start_date;
-	this.duration		= secoonds_per_day;			/* 23:00 hours in seconds */
+	this.duration		= seconds_per_day;			/* defaults to a day */
 	this.description	= description;
 
 	/* set the sub-items that the job have to have */
@@ -706,7 +731,7 @@ function deleteJob(job)
 	if (job.prev_job != 0)
 	{
 		/* this is an easy delete, just remove it from the linked list */
-		job_list[job.prev_job].next_job = job.next;
+		job_list[job.prev_job].next_job = job.next_job;
 
 		if (job_list[job.next_job] != 0)
 		{
@@ -714,15 +739,26 @@ function deleteJob(job)
 		}
 	}
 	else
-	{
+	{	
 		/* painful delete have to play with the owner */
 		for (var index=0; index < job_list[job.owner].streams.length; index++)
 		{
 			if (job_list[job.owner].streams[index] == job.id)
 			{
-				/* ok, we have found the one we want - hotspot_list is tided in repaint */
-				job_list[job.owner].streams.splice(index,1);
-				job_list[job.owner].hotspots.splice(index,1);
+				/* don't play with the hotspots - let the paint do that */
+				if (job.next_job == 0)
+				{
+					/* ok, we have found the one we want - only item - just remove the stream */
+					job_list[job.owner].streams.splice(index,1);
+					job_list[job.owner].hotspots.splice(index,1);
+				}
+				else
+				{
+					/* just remove the first job in the list */
+					job_list[job.owner].streams[index] = job.next_job;
+					job_list[job.next_job].prev_job  = 0;
+					job_list[job.next_job].first_job = true;
+				}
 				break;
 			}
 		}
@@ -731,6 +767,7 @@ function deleteJob(job)
 		{
 			/* ok, we are now a terminal job */
 			job_list[job.owner].terminal = true;
+			job_list[job.owner].hotspot.active = true;
 		}
 	}
 
@@ -740,79 +777,26 @@ function deleteJob(job)
 }
 
 /*--------------------------------------------------------------------------------*
- * insertBeforeJob
- * This function will insert a job before the target job.
+ * updateJob
  *
- * vars:
- * 	target_job	- this is the job that is to have the item iserted relative to.
- * 	job			- this is the job that is to be inserted.
+ * hotspot		The id of the hotspot that is attached to amended item.
+ * name			The new name.
+ * description	The new description.
  *--------------------------------------------------------------------------------*/
-function insertBeforeJob(target_job,job)
+function updateJob(hotspot, name, description)
 {
-	if (target_job.prev_job != 0)
-	{
-		/* easy insert - just add to the linked list */
-		job.next_job = job_list[target_job.prev_job].next_job;
-		job.prev_job = target_job.prev_job;
+	hotspot_list[hotspot].job.name = name;
+	hotspot_list[hotspot].job.description = description;
+	hotspot_list[hotspot].job.amended = true;
 
-		job_list[target_job.prev_job].next_job = job.id;
-		
-		if (target_job.next_job != 0)
-		{
-			job_list[target_job.next_job].prev_job = job.id;
-		}
-	}
-	else
-	{
-		job.next_job = target_job.next_job;
-
-		for (index=0; index < job_list[target_job.owner].streams.length; index++)
-		{
-			if (job_list[target_job.owner].streams[index] == target_job.id)
-			{
-				job_list[target_job.owner].streams[index] = job.id;
-				job_list[target_job.owner].hotspots[index] = new Hotspot(0,0,0,0,this,false);
-				break;
-			}
-		}
-	}
-	
 	/* been created you are now current */
-	chart_current_job = job.id;
+	chart_current_job = hotspot_list[hotspot].job.id;
 
 	/* now store the updated chart */
 	StoreChart();
 	repaint(pertt_canvas_id);
 }
-
-/*--------------------------------------------------------------------------------*
- * insertafterJob
- * This function will insert a job after the target job.
- *
- * vars:
- * 	target_job	- this is the job that is to have the item iserted relative to.
- * 	job			- this is the job that is to be inserted.
- *--------------------------------------------------------------------------------*/
-function insertAfterJob(target_job,job)
-{
-	job.prev_job = target_job.id;
-	job.next_job = target_job.next_job;
-
-	if (target_job.next_job != 0)
-	{
-		job_list[target_job.next_job].prev_job = job.id;
-	}
-
-	target_job.next_job = job.id;
 	
-	/* been created you are now current */
-	chart_current_job = job.id;
-
-	/* now store the updated chart */
-	StoreChart();
-	repaint(pertt_canvas_id);
-}
-
 /*--------------------------------------------------------------------------------*
  * createJob
  * This function will create the job, it will also create the hotspot for the job
@@ -853,7 +837,7 @@ function createJob(hotspot, name, description, parameter)
 
 		case 'previous':
 				new_job.owner = hotspot_list[hotspot].job.owner;
-				job_list[hotspot_list[hotspot].job.id].addNextJob(new_job);
+				job_list[hotspot_list[hotspot].job.id].addPrevJob(new_job);
 				break;
 	}
 
@@ -966,16 +950,17 @@ function actionButtonPress(type,hotspot,parameter)
 	element.style.display = "none";
 	chart_popup_active = false;
 
-
-
 	/* now handle the action on the new window */
 	switch(type)
 	{
+		case 'edit':
 		case 'after':
 		case 'parallel':
 		case 'previous':
-		case 'subitem':		showPopup(type, hotspot); 																							break;
-		case 'create':		createJob(hotspot,document.getElementById('name').value,document.getElementById('description').value,parameter);	break;
+		case 'subitem':	showPopup(type, hotspot); 																						break;
+		case 'delete':	deleteJob(job_list[hotspot_list[hotspot].job.id]);																break;
+		case 'create':	createJob(hotspot,document.getElementById('name').value,document.getElementById('description').value,parameter);break;
+		case 'save': 	updateJob(hotspot,document.getElementById('name').value,document.getElementById('description').value);			break;
 	}
 }
 	
@@ -994,6 +979,8 @@ function showPopup(type, hotspot, target)
 {
 	var element, x, y, width, height;
 	var focus = '';
+	var create_save = 'create';
+	var new_edit	= 'new';
 
 	/* what happens when the 'return' key is pressed */
 	chart_default_hotspot = hotspot;
@@ -1017,6 +1004,8 @@ function showPopup(type, hotspot, target)
 	{
 		/* basic click/touch on an element */
 		case 'select':	html_text = "amend: " + hotspot_list[hotspot].job.name + "<p>";
+						html_text += createButton('edit',hotspot,0);
+
 						if (hotspot_list[hotspot].job.id == 1)
 						{
 							html_text += createButton('after',hotspot,0);
@@ -1044,13 +1033,15 @@ function showPopup(type, hotspot, target)
 						chart_default_parameter = type;
 						break;
 
+		case 'edit':	create_save = 'save';
+						new_edit	= 'edit';
 		case 'after':
 		case 'parallel':
 		case 'previous':
-						html_text = "new: " + hotspot_list[hotspot].job.name + "<p>";
+						html_text = new_edit + hotspot_list[hotspot].job.name + "<p>";
 						html_text += createTextBox('name','Name',80,120);
 						html_text += createTextArea('description','Description',80);
-						html_text += createButton('create',hotspot,type);
+						html_text += createButton(create_save,hotspot,type);
 						focus = 'name';
 						chart_default_parameter = type;
 						break;
@@ -1116,7 +1107,7 @@ function touchListenerFunction(e)
 		if (((hotspot_list[index].x <= mouse_x) && (mouse_x <= (hotspot_list[index].x + hotspot_list[index].width))) &&
 		    ((hotspot_list[index].y <= mouse_y) && (mouse_y <= (hotspot_list[index].y + hotspot_list[index].height))))
 		{
-			if (!hotspot_list[index].job.id == 2)
+			if (hotspot_list[index].job.id != 2)
 			{
 				showPopup('select',index,e.target);
 			}
