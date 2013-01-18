@@ -20,6 +20,8 @@
  * The global static items.
  *--------------------------------------------------------------------------------*/
 var job_list;
+var seconds_in_days = 86400;
+
 var chart_name				= '';
 var hotspot_list			= [];
 var group_space_gap			= 30;		/* pixel space used for the group arrows */
@@ -28,6 +30,7 @@ var chart_popup_active		= false;	/* is there a popup on the screen */
 var	chart_current_job		= 1;		/* the currently selected job on the screen */
 var chart_button_list		= [];		/* the list of buttons on the current popup */
 var chart_current_button	= 0;
+var chart_seconds_per_day	= seconds_in_days;
 var date_obj				= new Date();
 
 /*--------------------------------------------------------------------------------*
@@ -35,6 +38,7 @@ var date_obj				= new Date();
  *--------------------------------------------------------------------------------*/
 var button_text = new Array();
 button_text['edit'] = 'Edit';
+button_text['save'] = 'Save';
 button_text['cancel'] = 'Cancel';
 button_text['subitem'] = 'Add Sub-Job';
 button_text['parallel'] = 'Add Concurrent Job';
@@ -43,7 +47,42 @@ button_text['after'] = 'Insert Dependancy Job';
 button_text['delete'] = 'Delete Job';
 button_text['create'] = 'Create';
 
-seconds_in_days = 86400;
+/*--------------------------------------------------------------------------------*
+ * Date functions.
+ *--------------------------------------------------------------------------------*/
+var date_map = [];
+date_map['m'] = 60;
+date_map['min'] = 60;
+date_map['mins'] = 60;
+date_map['minute'] = 60;
+date_map['minutes'] = 60;
+date_map['h'] = 60*60;
+date_map['hour'] = 60*60;
+date_map['hours'] = 60*60;
+date_map['d'] = 24*60*60; 
+date_map['day'] = 24*60*60;
+date_map['days'] = 24*60*60;
+
+/* regex's for the date parses */
+var regex_short_time = /^([0-9]*|[0-9]*\.[0-9]*)\s*(m|h|d|mins|day|days|hour|hours|minute|minutes)$/;
+var regex_long_time = /^([0-9]*)?\s(h|d|min|day|days|hour|hours),?\s*([0-9]*)?\s(m|h|min|hour|hours|minute|minutes)$/;
+
+function parseDateString(date_string)
+{
+	var parsed_date;
+	var duration = 0;
+
+	if (parsed_date = regex_short_time.exec(date_string))
+	{
+		var duration = parsed_date[1] * (date_map[parsed_date[2]]);
+	}
+	else if (parsed_date = regex_long_time.exec(date_string))
+	{
+		var duration = (parsed_date[1] * date_map[parsed_date[2]]) + (parsed_date[3] * date_map[parsed_date[4]]);
+	}
+
+	return duration;
+}
 
 /*--------------------------------------------------------------------------------*
  * SetWeek
@@ -176,7 +215,6 @@ function job_getDateString()
 	}
 	else
 	{
-		console.log("duration:" + this.duration);
 		hours	= (this.duration % seconds_in_days) / (60 * 60);
 		string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / seconds_in_days) + ":";
 		string	+= ((this.duration % seconds_per_day) / 60).toFixed(2);
@@ -783,11 +821,13 @@ function deleteJob(job)
  * name			The new name.
  * description	The new description.
  *--------------------------------------------------------------------------------*/
-function updateJob(hotspot, name, description)
+function updateJob(hotspot, name, description, duration)
 {
 	hotspot_list[hotspot].job.name = name;
 	hotspot_list[hotspot].job.description = description;
 	hotspot_list[hotspot].job.amended = true;
+	hotspot_list[hotspot].job.duration = parseDateString(duration);
+
 
 	/* been created you are now current */
 	chart_current_job = hotspot_list[hotspot].job.id;
@@ -807,7 +847,7 @@ function updateJob(hotspot, name, description)
  * description	The description of the new job.
  * parameter	This is a parameter that informs what sort of item to create.
  *--------------------------------------------------------------------------------*/
-function createJob(hotspot, name, description, parameter)
+function createJob(hotspot, name, description, duration, parameter)
 {
 	var owner = 0;
 	var new_job = new Job(name,description);
@@ -815,6 +855,7 @@ function createJob(hotspot, name, description, parameter)
 	
 	new_job.addHotSpot(new_hotspot);
 	new_job.created = true;
+	new_job.duration = parseDateString(duration);
 
 	switch(parameter)
 	{
@@ -895,7 +936,10 @@ function createButton(type,hotspot,parameter)
 {
 	chart_button_list.push("button_" + type);
 
-	return '<div class="popup_button rounded_bottom rounded_top shadow" id="button_' + type + '" onClick="actionButtonPress(\'' + type + '\', ' + hotspot + ',\'' + parameter + '\');">' + button_text[type] +'</div>';
+	return '<div class="popup_button rounded_bottom rounded_top shadow" id="button_' + type +
+			'" onClick="actionButtonPress(\'' +
+			type + '\', ' + hotspot + ',\'' +
+			parameter + '\');">' + button_text[type] +'</div>';
 }
 
 /*--------------------------------------------------------------------------------*
@@ -908,13 +952,19 @@ function createButton(type,hotspot,parameter)
  * 	name		The name of the text box, this will be used for the label.
  * 	width		The number of characters allowed in the text box.
  * 	max_length	The max number of characters in the string.
+ * 	value		The value to display.
  *
  * returns:
  *  The text for the text box that was created.
  *--------------------------------------------------------------------------------*/
-function createTextBox(id, name, width, max_length)
+function createTextBox(id, name, value, width, max_length)
 {
-	return '<div class="popup_input rounded_bottom rounded_top shadow"> ' + name + ': <input class="popup_textinput" id="' + id + '" type="text" size="' + width + '" maxlength="' + max_length + '"/></div>';
+	return '<div class="popup_input rounded_bottom rounded_top shadow"> ' +
+			name + ': <input class="popup_textinput" id="' +
+			id + '" type="text" size="' +
+			width + '" maxlength="' +
+			max_length + '" value="' +
+			value + '"/></div>';
 }
 
 /*--------------------------------------------------------------------------------*
@@ -924,15 +974,18 @@ function createTextBox(id, name, width, max_length)
  *
  * parameters:
  * 	id		The id of the text box.
+ * 	value	This is the text in the text box.
  * 	name	The name of the text box, this will be used for the label.
  * 	columns	The width of the text box.
  *
  * returns:
  *  The text for the text area.
  *--------------------------------------------------------------------------------*/
-function createTextArea(id, name, columns)
+function createTextArea(id, name, value, columns)
 {
-	return '<div class="popup_input rounded_bottom rounded_top shadow"><label class="popup_null">' + name + ': </label><textarea class="popup_textinput" id="' + id + '" cols="' + columns + '"></textarea></div>';
+	return '<div class="popup_input rounded_bottom rounded_top shadow"><label class="popup_null">' + name +
+			': </label><textarea class="popup_textinput" id="' + id + '" cols="' + columns + '">' +
+			value + '</textarea></div>';
 }
 
 /*--------------------------------------------------------------------------------*
@@ -945,10 +998,26 @@ function createTextArea(id, name, columns)
  *--------------------------------------------------------------------------------*/
 function actionButtonPress(type,hotspot,parameter)
 {
+	if (type == 'save' || type == 'create')
+	{
+		/* values */
+		var name = document.getElementById('name').value;
+		var desc = document.getElementById('description').value;
+		var dura = document.getElementById('duration').value;
+	}
+	else
+	{
+		var name = '';
+		var desc = '';
+		var dura = chart_seconds_per_day;
+	}
+
 	/* remove old window */
 	element = document.getElementById('popup');
 	element.style.display = "none";
 	chart_popup_active = false;
+
+	console.log("name: " + name);
 
 	/* now handle the action on the new window */
 	switch(type)
@@ -957,13 +1026,54 @@ function actionButtonPress(type,hotspot,parameter)
 		case 'after':
 		case 'parallel':
 		case 'previous':
-		case 'subitem':	showPopup(type, hotspot); 																						break;
-		case 'delete':	deleteJob(job_list[hotspot_list[hotspot].job.id]);																break;
-		case 'create':	createJob(hotspot,document.getElementById('name').value,document.getElementById('description').value,parameter);break;
-		case 'save': 	updateJob(hotspot,document.getElementById('name').value,document.getElementById('description').value);			break;
+		case 'subitem':	showPopup(type, hotspot); 							break;
+		case 'delete':	deleteJob(job_list[hotspot_list[hotspot].job.id]);	break;
+		case 'create':	createJob(hotspot,name,desc,dura,parameter);		break;
+		case 'save': 	updateJob(hotspot,name,desc,dura);					break;
 	}
 }
-	
+
+/*--------------------------------------------------------------------------------*
+ * createEditPopup
+ *
+ * This function will create the popups.
+ *
+ * parameters:
+ *	button		The main button for the popup.
+ *	title		The title string for the popup.
+ *	hotspot		The hotspot to attach the button to.
+ *  type		the button type.
+ *  use_values	If true then use the values from the hotspot job.
+ *
+ * return:
+ * 	html string for the edit popup.
+ *--------------------------------------------------------------------------------*/
+function createEditPopup(button,title,hotspot,type,use_values)
+{
+	var html_text = title + ": ";
+
+	if (use_values)
+	{
+		var name		= hotspot_list[hotspot].job.name;
+		var duration  	= (hotspot_list[hotspot].job.duration / chart_seconds_per_day) + " days";
+		var description	= hotspot_list[hotspot].job.description;
+	}
+	else
+	{
+		var name		= 'new job';
+		var duration  	= '1 day';
+		var description	= '';
+	}
+
+	html_text += hotspot_list[hotspot].job.name + "<p>";
+	html_text += createTextBox('name','Name',name,80,120);
+	html_text += createTextArea('description','Description',description,80);
+	html_text += createTextBox('duration','Duration',duration,80,120);
+	html_text += createButton(button,hotspot,type);
+
+	return html_text;
+}
+
 /*--------------------------------------------------------------------------------*
  * showPopup
  *
@@ -981,6 +1091,7 @@ function showPopup(type, hotspot, target)
 	var focus = '';
 	var create_save = 'create';
 	var new_edit	= 'new';
+	var use_values	= false;
 
 	/* what happens when the 'return' key is pressed */
 	chart_default_hotspot = hotspot;
@@ -1025,23 +1136,19 @@ function showPopup(type, hotspot, target)
 						}
 						break;
 
-		case 'subitem':	html_text = "new sub-item: " + hotspot_list[hotspot].job.name + "<p>";
-						html_text += createTextBox('name','Name',80,120);
-						html_text += createTextArea('description','Description',80);
-						html_text += createButton('create',hotspot,type);
+		case 'subitem':	
+						html_text = createEditPopup('create','Sub Item',hotspot,type,false);
 						focus = 'name';
 						chart_default_parameter = type;
 						break;
 
 		case 'edit':	create_save = 'save';
 						new_edit	= 'edit';
+						use_values	= true;
 		case 'after':
 		case 'parallel':
 		case 'previous':
-						html_text = new_edit + hotspot_list[hotspot].job.name + "<p>";
-						html_text += createTextBox('name','Name',80,120);
-						html_text += createTextArea('description','Description',80);
-						html_text += createButton(create_save,hotspot,type);
+						html_text = createEditPopup(create_save,new_edit,hotspot,type,use_values);
 						focus = 'name';
 						chart_default_parameter = type;
 						break;
@@ -1171,6 +1278,11 @@ function initialise(canvas_id,import_chart)
 		chart_name = "pertt_chart.default.";
 	else
 		chart_name = "pertt_chart." + pertt_canvas_id + "."
+
+	/* set the day length */
+	date_map['d'] = chart_seconds_per_day;
+	date_map['day'] = chart_seconds_per_day;
+	date_map['days'] = chart_seconds_per_day;
 
 	/* test debug */
 	SetWeek(0,5,27000);
