@@ -215,9 +215,8 @@ function job_getDateString()
 	}
 	else
 	{
-		hours	= (this.duration % seconds_in_days) / (60 * 60);
-		string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / seconds_in_days) + ":";
-		string	+= ((this.duration % seconds_per_day) / 60).toFixed(2);
+		hours	= (this.duration % seconds_in_days) / (60 * 60).toFixed(2);
+		string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / seconds_in_days) + ":" + hours;
 	}
 
 	this.date_string = string;
