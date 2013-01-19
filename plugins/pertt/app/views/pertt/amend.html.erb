@@ -18,6 +18,9 @@
 	var pertt_canvas_id = "<%= @canvas_id %>"
 	var import_chart = <%= raw @chart_model || "null" %>;
 	var pertt_update_field = document.getElementById('chart_data');
+	var chart_days_per_week = <%= @chart_days_per_week %>;
+	var chart_first_week_day = <%= @chart_first_week_day%>;
+	var chart_seconds_per_day = <%= @chart_secs_per_day %>;
 	
 	initialise('<%= @canvas_id %>',import_chart);
 

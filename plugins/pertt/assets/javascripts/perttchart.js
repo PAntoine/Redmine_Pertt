@@ -23,6 +23,7 @@ var job_list;
 var seconds_in_days = 86400;
 
 var chart_name				= '';
+var chart_updated			= 0;
 var hotspot_list			= [];
 var group_space_gap			= 30;		/* pixel space used for the group arrows */
 var chart_dirty				= false;	/* has the chart been changed */
@@ -511,8 +512,11 @@ function job_findPreviousJob()
 				/* ok, if we are walking into a box then we need to get the last item in the box */
 				if (job_list[current].streams.length != 0)
 				{
-					/* start at the first item in the box */
-					current = job_list[current].streams[0];
+					/* start at the first item in the box - into nested boxes */
+					while (job_list[current].streams.length != 0)
+					{
+						current = job_list[current].streams[0];
+					}
 
 					/* walk forward until we find the end of the box */
 					while(job_list[current].next_job != 0)
@@ -545,9 +549,12 @@ function job_findNextJob()
 
 		do
 		{
+			console.log("job: " + current);
+
 			if (job_list[current].next_job != 0)
 			{
 				current = job_list[current].next_job;
+				console.log("next: " + current);
 			}
 			else
 			{
@@ -555,19 +562,21 @@ function job_findNextJob()
 				do
 				{
 					current = job_list[current].owner;
+					console.log("owner: " + current);
 				}
 				while (job_list[current].next_job == 0);
 
 				current = job_list[current].next_job;
 			}
 
-			if (job_list[current].streams.length != 0)
+			while (job_list[current].streams.length != 0)
 			{
 				/* start at the first item in the box */
 				current = job_list[current].streams[0];
+				console.log("xhild: " + current + " name " + job_list[current].name);
 			}
 		}
-		while(current != 0 && current != 2 && job_list[current].terminal != true);
+		while(current != 0 && current != 2 && !job_list[current].terminal);
 
 		result = current;
 	}
@@ -769,10 +778,12 @@ function deleteJob(job)
 	{
 		/* this is an easy delete, just remove it from the linked list */
 		job_list[job.prev_job].next_job = job.next_job;
+		job_list[job.prev_job].amended = true;
 
 		if (job_list[job.next_job] != 0)
 		{
 			job_list[job.next_job].prev_job = job.prev_job;
+			job_list[job.next_job].amended = true;
 		}
 	}
 	else
@@ -788,6 +799,7 @@ function deleteJob(job)
 					/* ok, we have found the one we want - only item - just remove the stream */
 					job_list[job.owner].streams.splice(index,1);
 					job_list[job.owner].hotspots.splice(index,1);
+					job_list[job.owner].amended = true;
 				}
 				else
 				{
@@ -795,6 +807,9 @@ function deleteJob(job)
 					job_list[job.owner].streams[index] = job.next_job;
 					job_list[job.next_job].prev_job  = 0;
 					job_list[job.next_job].first_job = true;
+
+					job_list[job.owner].amended = true;
+					job_list[job.next_job].amended = true;
 				}
 				break;
 			}
@@ -1284,7 +1299,7 @@ function initialise(canvas_id,import_chart)
 	date_map['days'] = chart_seconds_per_day;
 
 	/* test debug */
-	SetWeek(0,5,27000);
+	SetWeek(chart_first_week_day,chart_days_per_week,chart_seconds_per_day);
 
 	if (canvas)
 	{
@@ -1319,6 +1334,7 @@ function initialise(canvas_id,import_chart)
 					var new_job = new Job('start','start');
 					var new_hotspot = new Hotspot(0,0,0,0,new_job,true);
 					new_job.created = true;
+					new_job.duration = 0;
 					new_job.addHotSpot(new_hotspot);
 					new_job.owner = 0;
 					base_job.addSubJob(new_job);
@@ -1330,6 +1346,7 @@ function initialise(canvas_id,import_chart)
 					var end_job = new Job('end','end of project');
 					var new_hotspot = new Hotspot(0,0,0,0,end_job,true);
 					end_job.created = true;
+					end_job.duration = 0;
 					end_job.job_status = 'complete';
 					end_job.addHotSpot(new_hotspot);
 					end_job.owner = 0;
@@ -1339,13 +1356,6 @@ function initialise(canvas_id,import_chart)
 
 			/* calculate the box sizes - this will need to be done once from the top level */
 			job_list[0].calculateBoxSize(context,holding_box);
-
-
-			for (var i = 0; i < job_list.length ; i++)
-			{
-				console.log("job[" + job_list[i].id + "] s:" + job_list[i].start_date + " e:" + job_list[i].end_date +
-							" o:" + job_list[i].owner + " n:" + job_list[i].next_job + " " + job_list[i].name);
-			}
 
 			/* set the canvas size to that of the toplevel box */
 			canvas.width	= job_list[0].hotspot.width;
@@ -1631,6 +1641,10 @@ function LoadChart(chart,objects)
 function GetChanges()
 {
 	var change_list = [];
+	var updates = {};
+	updates.updated = Math.floor(chart_updated/1000);
+	updates.selected = chart_current_job;
+	updates.change_list = change_list;
 
 	for (var index=0; index < job_list.length; index++)
 	{
@@ -1643,5 +1657,5 @@ function GetChanges()
 		}
 	}
 
-	return JSON.stringify(change_list,ParseObjects);
+	return JSON.stringify(updates,ParseObjects);
 }

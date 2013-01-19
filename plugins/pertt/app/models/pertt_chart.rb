@@ -46,12 +46,12 @@ class PerttChart < ActiveRecord::Base
 		new_job = self.pertt_jobs.create 	:name => changed_job["name"],
 											:index => changed_job["id"],
 											:owner => changed_job["owner"],
-											:is_end => changed_job["end"] ? changed_job["end"] : false,
-											:is_start => changed_job["start"] ? changed_job["start"] : false,
 											:prev_job => changed_job["prev_job"],
 											:next_job => changed_job["next_job"],
+											:end_time => changed_job["end_date"],
+											:start_time	=> changed_job["end_date"],
 											:is_terminal => changed_job["terminal"],
-											:is_selected => changed_job["selected"] ? changed_job["selected"] : false,
+											:duration_secs => changed_job["duration"],
 											:is_first_job => changed_job["first_job"],
 											:description => changed_job["description"]
 

@@ -38,16 +38,16 @@ class PerttJob < ActiveRecord::Base
 		if self.is_deleted
 			result << "null,"
 		else
-			result <<	'{"id":"'		 << self.index.to_s			<< '",' <<
-						'"name":"'		 << self.name				<< '",' <<
-						'"owner":'		 << self.owner.to_s			<< ','	<<
-						'"prev_job":'	 << self.prev_job.to_s		<< ','	<<
-						'"next_job":'	 << self.next_job.to_s		<< ','	<<
-						'"terminal":'	 << self.is_terminal.to_s 	<< ','	<<
-						'"first_job":'	 << self.is_first_job.to_s	<< ',' <<
-						'"start":'		 << self.is_start.to_s		<< ',' <<	 
-						'"end":'		 << self.is_end.to_s		<< ',' <<	 
-						'"selected":'	 << self.is_selected.to_s	<< ',' <<
+			result <<	'{"id":"'		<< self.index.to_s			<< '",' <<
+						'"name":"'		<< self.name				<< '",' <<
+						'"owner":'		<< self.owner.to_s			<< ','	<<
+						'"prev_job":'	<< self.prev_job.to_s		<< ','	<<
+						'"next_job":'	<< self.next_job.to_s		<< ','	<<
+						'"terminal":'	<< self.is_terminal.to_s 	<< ','	<<
+						'"first_job":'	<< self.is_first_job.to_s	<< ','	<<
+						'"end_date":'	<< self.end_time.to_s		<< ','	<<
+						'"start_date":'	<< self.start_time.to_s		<< ','	<<
+						'"duration":'	<< self.duration_secs.to_s	<< ','	<<
 						'"description":"'<< self.description		<< '", "streams":['
 
 			# output the stream
@@ -74,13 +74,13 @@ class PerttJob < ActiveRecord::Base
 		# update the job details
 		self.name = input_hash["name"]
 		self.owner = input_hash["owner"]
-		self.is_end = input_hash["end"]
-		self.is_start = input_hash["start"]
 		self.prev_job = input_hash["prev_job"]
 		self.next_job = input_hash["next_job"]
 		self.is_terminal = input_hash["terminal"]
-		self.is_selected = input_hash["selected"]
 		self.is_first_job = input_hash["first_job"]
+		self.end_time = input_hash["end_date"]
+		self.start_time	= input_hash["end_date"]
+		self.duration_secs = input_hash["duration"]
 		self.description = input_hash["description"]
 
 		# Incase a deleted object is being reused
@@ -89,8 +89,6 @@ class PerttJob < ActiveRecord::Base
 		# remove the old links
 		self.pertt_links.delete_all
 	
-		puts "job: " << self.index.to_s
-
 		# add the new ones
 		input_hash["streams"].each do | job_id |
 			puts "adding job: " << job_id.to_s
@@ -107,23 +105,15 @@ class PerttJob < ActiveRecord::Base
 	end
 
 	##
-	# delete
+	# delete_job
 	# 
 	# This function will remove a job from the database.
 	# 
 	# parameter:
+	# 	none.
 	#
-	# 	input_hash	The input has that has been sent from the javascript
-	# 				that defines the job that needs to be deleted to the
-	# 				database.
-	#
-	def self.delete (input_hash)
-		old_job = pertt_job.find(:id => input_hash["id"])
-
-		if (old_job)
-			old_job.is_deleted = true
-
-			old_job.save
-		end
+	def delete_job
+		self.is_deleted = true
+		self.save
 	end
 end

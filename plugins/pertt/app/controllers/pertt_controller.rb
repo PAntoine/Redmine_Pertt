@@ -77,6 +77,9 @@ class PerttController < ApplicationController
 		if (chart)
 			@chart_name = chart.name
 			@canvas_id = chart.name.gsub(" ", "_")
+			@chart_secs_per_day = chart.secs_per_day
+			@chart_days_per_week = chart.days_per_week
+			@chart_first_week_day = chart.first_week_day
 
 			job_list = chart.pertt_jobs
 				
@@ -106,7 +109,7 @@ class PerttController < ApplicationController
 		if request.post?
 			chart = PerttChart.find(params[:id])
 
-			# did the user want to dicard any changed they made?
+			# did the user want to discard any changes they made?
 			if params[:discard_button] != nil
 				session[:last_saved] = chart.name.gsub(" ", "_")
 				flash[:notice] = 'Changes Discarded'
@@ -117,9 +120,18 @@ class PerttController < ApplicationController
 				flash[:notice] = 'Updated OK'
 
 				# update the amended jobs
-				update_chart_data.each do | changed_job |
+				change_list = update_chart_data['change_list']
+
+				change_list.each do | changed_job |
 					if changed_job["created"]
 						chart.add_job changed_job
+
+					elsif changed_job["deleted"]
+						job = chart.pertt_jobs.find_by_index changed_job['id']
+
+						if (job)
+							job.delete_job
+						end
 
 					elsif changed_job["amended"]
 						job = chart.pertt_jobs.find_by_index changed_job['id']
@@ -130,10 +142,6 @@ class PerttController < ApplicationController
 						else
 							flash[:alert] = "Failed to find job on update. JobID = " << changed_job['id']
 						end
-					
-					elsif changed_job["deleted"]
-						# The Job has been deleted remove
-						chart.pertt_jobs.delete(changed_job)
 					else
 						flash[:alert] = "Failed unknown state for job"
 					end
