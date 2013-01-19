@@ -37,14 +37,14 @@ var date_obj				= new Date();
  * The buttons for the popups
  *--------------------------------------------------------------------------------*/
 var button_text = new Array();
-button_text['edit'] = 'Edit';
+button_text['edit'] = 'Edit Task';
 button_text['save'] = 'Save';
 button_text['cancel'] = 'Cancel';
-button_text['subitem'] = 'Add Sub-Job';
-button_text['parallel'] = 'Add Concurrent Job';
-button_text['previous'] = 'Add Dependent Job';
-button_text['after'] = 'Insert Dependancy Job';
-button_text['delete'] = 'Delete Job';
+button_text['subitem'] = 'Add Sub-Task';
+button_text['parallel'] = 'Add Concurrent Task';
+button_text['previous'] = 'Insert Task Before';
+button_text['after'] = 'Insert Task After';
+button_text['delete'] = 'Delete Task';
 button_text['create'] = 'Create';
 
 /*--------------------------------------------------------------------------------*
@@ -215,8 +215,8 @@ function job_getDateString()
 	}
 	else
 	{
-		hours	= (this.duration % seconds_in_days) / (60 * 60).toFixed(2);
-		string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / seconds_in_days) + ":" + hours;
+		hours	= ((this.duration % chart_seconds_per_day) / (60 * 60)).toFixed(2);
+		string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / chart_seconds_per_day) + ":" + hours;
 	}
 
 	this.date_string = string;
