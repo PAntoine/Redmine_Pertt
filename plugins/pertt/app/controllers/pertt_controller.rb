@@ -36,6 +36,10 @@ class PerttController < ApplicationController
 			@chart = PerttChart.new(params[:pertt_chart])
 			@chart.project_id = @project.id
 
+			# create the root issue for the pertt chart
+			new_issue = Issue.create( :project_id => @project.id, :subject => @chart.name, :author_id => User.current.id, :tracker_id => params[:tracker_id] )
+			@chart.issue_id = new_issue.id
+
 			if @chart.save
 				flash[:notice] = 'Saved Ok'
 				redirect_to :action => 'index', :project_id => @project.id
@@ -119,32 +123,11 @@ class PerttController < ApplicationController
 				update_chart_data = JSON.parse(params[:chart_data])
 				flash[:notice] = 'Updated OK'
 
-				# update the amended jobs
-				change_list = update_chart_data['change_list']
-
-				change_list.each do | changed_job |
-					if changed_job["created"]
-						chart.add_job changed_job
-
-					elsif changed_job["deleted"]
-						job = chart.pertt_jobs.find_by_index changed_job['id']
-
-						if (job)
-							job.delete_job
-						end
-
-					elsif changed_job["amended"]
-						job = chart.pertt_jobs.find_by_index changed_job['id']
-
-						if (job)
-							# The Job has been amended now amended
-							job.amend_job changed_job
-						else
-							flash[:alert] = "Failed to find job on update. JobID = " << changed_job['id']
-						end
-					else
-						flash[:alert] = "Failed unknown state for job"
-					end
+				if ((error = chart.update_chart( @project.id, update_chart_data )) != '')
+					flash[:alert] = error
+				else
+					# now all the issues have been created, now connect all the issues
+					chart.connect_issues update_chart_data
 				end
 
 				# Update the chart ok

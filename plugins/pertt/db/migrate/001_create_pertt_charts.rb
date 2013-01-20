@@ -25,6 +25,8 @@ class CreatePerttCharts < ActiveRecord::Migration
 		t.integer	:secs_per_day,	:null => false, :default => 27000
 		t.integer	:days_per_week,	:null => false, :default => 5
 		t.integer	:first_week_day,:null => false, :default => 0
+		t.integer	:tracker_id,	:null => false, :default => 2
+		t.integer	:issue_id
 		t.string	:name, 			:null => false
 		t.string	:description,	:null => false
     end
@@ -33,16 +35,18 @@ class CreatePerttCharts < ActiveRecord::Migration
 		t.integer	:id
 		t.integer	:index,			:null => false
 		t.integer	:pertt_chart_id,:null => false
-		t.string	:name,			:null => false
 		t.integer	:owner,			:null => false
 		t.integer	:prev_job,		:null => false
 		t.integer	:next_job,		:null => false
 		t.integer	:duration_secs,	:null => false
+		t.integer	:issue_id,		:null => false
+		t.integer	:prev_rel_id,	:default => 0
 		t.datetime	:start_time,	:null => false
 		t.datetime	:end_time,		:null => false
 		t.boolean	:is_deleted,	:null => false, :default => false
 		t.boolean	:is_terminal
 		t.boolean	:is_first_job,	:default => false
+		t.string	:name,			:null => false
 		t.string	:description
 	end
 

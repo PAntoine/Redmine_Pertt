@@ -34,14 +34,27 @@ class PerttChart < ActiveRecord::Base
 	# add_job
 	# 
 	# This function will create and add a new job to the current chart.
+ 	# This also expects that the owner job is created before this job is
+	# created. As the job id's in the JavaScript are sequential, the
+	# child cannot be created before the child, this relationship should
+	# not be a problem.
 	# 
 	# parameter:
-	#
+	# 	project_id	The project id of the project that owns the pertt
+	# 				chart.
 	# 	changed_job	The input has that has been sent from the javascript
 	# 				that defines the job that needs to be added to the
 	# 				database.
 	#
-	def add_job ( changed_job )
+	def add_job ( project_id, changed_job )
+		# create new issue for the job - assign parent if required.
+		if (changed_job["owner"] == 0)
+			new_issue = Issue.create(:project_id => project_id, :subject => changed_job["name"], :author_id => User.current.id, :tracker_id => self.tracker_id, :parent_issue_id => self.issue_id)
+		else
+			parent_issue = self.pertt_jobs.find_by_index(changed_job["owner"]).issue_id
+			new_issue = Issue.create(:project_id => project_id, :subject => changed_job["name"], :author_id => User.current.id, :tracker_id => self.tracker_id, :parent_issue_id => parent_issue)
+		end
+
 		# create the new job
 		new_job = self.pertt_jobs.create 	:name => changed_job["name"],
 											:index => changed_job["id"],
@@ -53,7 +66,8 @@ class PerttChart < ActiveRecord::Base
 											:is_terminal => changed_job["terminal"],
 											:duration_secs => changed_job["duration"],
 											:is_first_job => changed_job["first_job"],
-											:description => changed_job["description"]
+											:description => changed_job["description"],
+											:issue_id => new_issue.id
 
 		# New job as been added to the chart add it here
 		puts changed_job["streams"]
@@ -67,4 +81,102 @@ class PerttChart < ActiveRecord::Base
 		end
 	end
 
+	##
+	# update_chart
+	# 
+	# This function will update the chart with the data that has been
+	# given. It will create and delete jobs. It will also create and
+	# amend the issues that are attached.
+	#
+	# parameter:
+	# 	changed_job	The input has that has been sent from the javascript
+	# 				that defines the job that needs to be added to the
+	# 				database.
+	#
+	def update_chart ( project_id, update_chart_data )
+		result = ''
+
+		# update the selection pointer
+		self.selected = update_chart_data['selected']
+		self.save
+
+		# update the amended jobs
+		update_chart_data['change_list'].each do | changed_job |
+
+			if changed_job["created"]
+				self.add_job project_id, changed_job
+
+			elsif changed_job["deleted"]
+				job = self.pertt_jobs.find_by_index changed_job['id']
+
+				if (job)
+					job.delete_job
+				end
+
+			elsif changed_job["amended"]
+				job = self.pertt_jobs.find_by_index changed_job['id']
+
+				if (job)
+					# The Job has been amended now amended
+					job.amend_job changed_job
+				else
+					result = "Failed to find job on update. JobID = " << changed_job['id']
+				end
+			else
+				result = "Failed unknown state for job"
+			end
+		end
+
+		return result
+	end
+
+	##
+	# connect_issues
+	# 
+	# This function will connect the all the issues for the chart.
+	#
+	# parameter:
+	# 	update_chart_data	The input has that has been sent from the
+	# 						from the javascript that is used to update
+	# 						the chart.
+	#
+	def connect_issues ( update_chart_data )
+		result = ''
+
+		puts "in connect issues"
+
+		# update the amended jobs
+		update_chart_data['change_list'].each do | changed_job |
+
+			puts "item " << changed_job.inspect
+
+			if changed_job["created"] || changed_job["amended"]
+				job = self.pertt_jobs.find_by_index changed_job['id']
+
+				if (job)
+					# check to see if the job is connected linearly, if so set it
+					if (job.prev_job != 0)
+						puts "connecting " << job.prev_job.to_s << " to " << job.id.to_s
+
+						prev_job = self.pertt_jobs.find_by_index job.prev_job
+
+						puts "issue id from:" << prev_job.issue_id.to_s << " to: " << job.issue_id.to_s
+
+						if (job.prev_rel_id != 0)
+							IssueRelation.find(job.prev_rel_id).destroy()
+							job.prev_rel_id = 0;
+						end
+
+						new_relation = IssueRelation.create(:relation_type => 'follows', :issue_from => Issue.find(job.issue_id), :issue_to => Issue.find(prev_job.issue_id))
+						job.prev_rel_id = new_relation.id
+
+						job.save
+					end
+				end
+			end
+		end
+
+		return result
+	end
 end
+
