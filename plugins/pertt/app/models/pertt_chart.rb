@@ -49,11 +49,25 @@ class PerttChart < ActiveRecord::Base
 	def add_job ( project_id, changed_job )
 		# create new issue for the job - assign parent if required.
 		if (changed_job["owner"] == 0)
-			new_issue = Issue.create(:project_id => project_id, :subject => changed_job["name"], :author_id => User.current.id, :tracker_id => self.tracker_id, :parent_issue_id => self.issue_id)
+			parent_issue = self.issue_id
 		else
 			parent_issue = self.pertt_jobs.find_by_index(changed_job["owner"]).issue_id
-			new_issue = Issue.create(:project_id => project_id, :subject => changed_job["name"], :author_id => User.current.id, :tracker_id => self.tracker_id, :parent_issue_id => parent_issue)
 		end
+
+		puts "id: " << changed_job["id"].to_s << " start date utc: " << Time.at(changed_job["start_date"]).utc.to_date.to_s << " end_date: " << Time.at(changed_job["end_date"]).utc.to_date.to_s
+
+		# create the jobs issue
+		duration_hours = changed_job["duration"].to_f / 3600.0
+
+		new_issue = Issue.create(	:project_id => project_id,
+									:subject => changed_job["name"],
+									:description => changed_job["description"],
+									:start_date => Time.at(changed_job["start_date"]).utc.to_date,
+									:due_date => Time.at(changed_job["end_date"]).utc.to_date,
+									:estimated_hours => duration_hours,
+									:author_id => User.current.id,
+									:tracker_id => self.tracker_id,
+									:parent_issue_id => parent_issue)
 
 		# create the new job
 		new_job = self.pertt_jobs.create 	:name => changed_job["name"],
@@ -62,7 +76,7 @@ class PerttChart < ActiveRecord::Base
 											:prev_job => changed_job["prev_job"],
 											:next_job => changed_job["next_job"],
 											:end_time => changed_job["end_date"],
-											:start_time	=> changed_job["end_date"],
+											:start_time	=> changed_job["start_date"],
 											:is_terminal => changed_job["terminal"],
 											:duration_secs => changed_job["duration"],
 											:is_first_job => changed_job["first_job"],
