@@ -59,15 +59,23 @@ class PerttChart < ActiveRecord::Base
 		# create the jobs issue
 		duration_hours = changed_job["duration"].to_f / 3600.0
 
-		new_issue = Issue.create(	:project_id => project_id,
-									:subject => changed_job["name"],
-									:description => changed_job["description"],
-									:start_date => Time.at(changed_job["start_date"]).utc.to_date,
-									:due_date => Time.at(changed_job["end_date"]).utc.to_date,
-									:estimated_hours => duration_hours,
-									:author_id => User.current.id,
-									:tracker_id => self.tracker_id,
-									:parent_issue_id => parent_issue)
+		# don't create issues for the structural jobs/tasks
+		if (changed_job["id"] < 3)
+
+			new_issue = Issue.create(	:project_id => project_id,
+										:subject => changed_job["name"],
+										:description => changed_job["description"],
+										:start_date => Time.at(changed_job["start_date"]).utc.to_date,
+										:due_date => Time.at(changed_job["end_date"]).utc.to_date,
+										:estimated_hours => duration_hours,
+										:author_id => User.current.id,
+										:tracker_id => self.tracker_id,
+										:parent_issue_id => parent_issue)
+
+			new_issue_id = new_issue.id
+		else
+			new_issue_id = 0
+		end
 
 		# create the new job
 		new_job = self.pertt_jobs.create 	:name => changed_job["name"],
@@ -81,7 +89,7 @@ class PerttChart < ActiveRecord::Base
 											:duration_secs => changed_job["duration"],
 											:is_first_job => changed_job["first_job"],
 											:description => changed_job["description"],
-											:issue_id => new_issue.id
+											:issue_id => new_issue_id
 
 		# New job as been added to the chart add it here
 		puts changed_job["streams"]
@@ -168,8 +176,8 @@ class PerttChart < ActiveRecord::Base
 				job = self.pertt_jobs.find_by_index changed_job['id']
 
 				if (job)
-					# check to see if the job is connected linearly, if so set it
-					if (job.prev_job != 0)
+					# check to see if the job is connected linearly (and not to a structural node), if so set it
+					if (job.prev_job > 2)
 						puts "connecting " << job.prev_job.to_s << " to " << job.id.to_s
 
 						prev_job = self.pertt_jobs.find_by_index job.prev_job
@@ -181,7 +189,9 @@ class PerttChart < ActiveRecord::Base
 							job.prev_rel_id = 0;
 						end
 
-						new_relation = IssueRelation.create(:relation_type => 'follows', :issue_from => Issue.find(job.issue_id), :issue_to => Issue.find(prev_job.issue_id))
+						new_relation = IssueRelation.create(	:relation_type => 'follows',
+																:issue_from => Issue.find(job.issue_id),
+																:issue_to => Issue.find(prev_job.issue_id))
 						job.prev_rel_id = new_relation.id
 
 						job.save
