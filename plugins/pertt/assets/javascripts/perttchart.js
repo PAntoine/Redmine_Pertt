@@ -20,7 +20,7 @@
  * The global static items.
  *--------------------------------------------------------------------------------*/
 var job_list;
-var seconds_in_days = 86400;
+var seconds_in_day = 86400;
 
 var chart_name				= '';
 var chart_updated			= 0;
@@ -31,8 +31,11 @@ var chart_popup_active		= false;	/* is there a popup on the screen */
 var	chart_current_job		= 1;		/* the currently selected job on the screen */
 var chart_button_list		= [];		/* the list of buttons on the current popup */
 var chart_current_button	= 0;
-var chart_seconds_per_day	= seconds_in_days;
+var chart_seconds_per_day	= seconds_in_day;
 var date_obj				= new Date();
+
+
+var chart_start_day_time	= 32400;
 
 /*--------------------------------------------------------------------------------*
  * The buttons for the popups
@@ -94,9 +97,10 @@ function parseDateString(date_string)
 function SetWeek(start_day,week_days,day_length_secs)
 {
 	/* create the arrays that are required */
-	day_of_week = [0,0,0,0,0,0,0];
-	weekend		= [0,0,0,0,0,0,0];
-	minus_mask	= [1,0,0,0,0,0,0];
+	day_of_week		= [0,0,0,0,0,0,0];
+	weekend			= [0,0,0,0,0,0,0];
+	minus_mask		= [1,0,0,0,0,0,0];
+	days_to_week	= [0,0,0,0,0,0,0]; 
 
 	/* set the week layout */
 	for (var index=0; index < 7; index++)
@@ -106,6 +110,8 @@ function SetWeek(start_day,week_days,day_length_secs)
 		if (day_of_week[index] >= week_days)
 		{
 			day_of_week[index] = 0;
+
+			days_to_week[index] = (7 - index + start_day) % 7;		/* days till the start of week */
 			weekend[index] = 1;
 		}
 	}
@@ -124,6 +130,8 @@ function SetWeek(start_day,week_days,day_length_secs)
  * This function will calculate the end time of a job. It will take the start time
  * as a unix epoc time and then calculate the end time of the job talking into 
  * account the number of days in a week and the start day of the object.
+ *
+ * NOTE: if the start day is not within the "week" then the dates will be out.
  *--------------------------------------------------------------------------------*/
 function CalculateEndTime(job)
 {
@@ -144,12 +152,37 @@ function CalculateEndTime(job)
 		job.amended = true;
 	}
 
-	date_obj.setTime(job.start_date * 1000);
+	/* check that start_date does not need to rollover */
+	var day_start		= Math.floor(job.start_date / seconds_in_day) * seconds_in_day;
+	var remain_of_day	= (job.start_date - day_start) % seconds_per_day;
+	job.start_date		= day_start + (Math.floor((job.start_date - day_start) / seconds_per_day) * seconds_in_day) + remain_of_day;
 	
+	date_obj.setTime(job.start_date * 1000);
 	var start_day	= date_obj.getDay();
-	var days        = Math.floor(job.duration / seconds_per_day);
-	var weekends    = Math.floor(((day_of_week[start_day] + days) / days_per_week) + weekend[start_day]);
-	var end_day     = Math.floor((day_of_week[start_day] + days) % days_per_week);
+
+	/* get the start day out of the weekend */
+	job.start_date	+= days_to_week[start_day] * seconds_in_day;	
+
+	/* get the time offset from the start (0:00) of day */
+	var day_start = (Math.floor(job.start_date / seconds_in_day) * seconds_in_day);
+
+	/* calc number of working day for the duration */
+	if (job.duration > 0)
+	{
+		var num_days_ratio = (remain_of_day + job.duration - 1) / seconds_per_day;
+		var num_days = Math.floor(num_days_ratio);
+		var remains = Math.floor((0.000001 + num_days_ratio - num_days) * seconds_per_day) + 1; // Include nasty hack to get around rounding error
+	}
+	else
+	{
+		var num_days_ratio = 0;
+		var num_days = 0;
+		var remains = 0;
+	}
+
+	/* calculate the weekends */
+	var weekends    = Math.floor(((day_of_week[start_day] + num_days) / days_per_week) + weekend[start_day]);
+	var end_day     = Math.floor((day_of_week[start_day] + num_days) % days_per_week);
 
 	/* if 1 or more 1 working weeks, and the week starts on the first day of the week
 	 * then the count will include one too many weekends. Needs to be removed.
@@ -160,7 +193,7 @@ function CalculateEndTime(job)
 	}
 
 	/* add the duration in working time to the start time */
-	job.end_date = job.start_date + ((days + (weekends * weekend_length)) * seconds_in_days);
+	job.end_date = day_start + ((num_days + (weekends * weekend_length)) * seconds_in_day) + remains;
 }
 
 /*--------------------------------------------------------------------------------*
@@ -208,19 +241,27 @@ function GenerateDateString(date)
 
 function job_getDateString()
 {
-	var start_date = new Date(this.start_date * 1000);
-	
-	if (this.job_status == "complete")
+	if (this.duration == 0)
 	{
-		string = GenerateDateString(start_date) + " - " + GenerateDateString(new Date(this.end_date * 1000));
+		var string = '';
 	}
 	else
 	{
-		hours	= ((this.duration % chart_seconds_per_day) / (60 * 60)).toFixed(2);
-		string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / chart_seconds_per_day) + ":" + hours;
+		var start_date = new Date(this.start_date * 1000);
+
+		if (this.job_status == "complete")
+		{
+			string = GenerateDateString(start_date) + " - " + GenerateDateString(new Date(this.end_date * 1000));
+		}
+		else
+		{
+			hours	= ((this.duration % chart_seconds_per_day) / (60 * 60)).toFixed(2);
+			string	= GenerateDateString(start_date) + " - " + Math.floor(this.duration / chart_seconds_per_day) + ":" + hours;
+		}
 	}
 
 	this.date_string = string;
+
 
 	return string;
 }
@@ -549,12 +590,9 @@ function job_findNextJob()
 
 		do
 		{
-			console.log("job: " + current);
-
 			if (job_list[current].next_job != 0)
 			{
 				current = job_list[current].next_job;
-				console.log("next: " + current);
 			}
 			else
 			{
@@ -562,7 +600,6 @@ function job_findNextJob()
 				do
 				{
 					current = job_list[current].owner;
-					console.log("owner: " + current);
 				}
 				while (job_list[current].next_job == 0);
 
@@ -573,7 +610,6 @@ function job_findNextJob()
 			{
 				/* start at the first item in the box */
 				current = job_list[current].streams[0];
-				console.log("xhild: " + current + " name " + job_list[current].name);
 			}
 		}
 		while(current != 0 && current != 2 && !job_list[current].terminal);
@@ -729,6 +765,10 @@ function job_addMethods(job)
 
 function Job(name,description)
 {
+	/* get the date and round it down to beginning of the day */
+	var date = (new Date()).getTime() / 1000;
+	var start_time = (Math.floor(date / seconds_in_day) * seconds_in_day);
+
 	/* set the standard items */
 	this.name			= name;
 	this.owner			= 0;
@@ -738,7 +778,7 @@ function Job(name,description)
 	this.hotspot		= null;
 	this.terminal		= true;
 	this.first_job		= false;
-	this.start_date		= (Math.round((new Date()).getTime() / 1000)/60)*60;	/* rounded to minutes */
+	this.start_date		= start_time;
 	this.end_date		= this.start_date;
 	this.duration		= seconds_per_day;			/* defaults to a day */
 	this.description	= description;
@@ -1030,8 +1070,6 @@ function actionButtonPress(type,hotspot,parameter)
 	element = document.getElementById('popup');
 	element.style.display = "none";
 	chart_popup_active = false;
-
-	console.log("name: " + name);
 
 	/* now handle the action on the new window */
 	switch(type)

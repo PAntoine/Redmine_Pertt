@@ -21,6 +21,20 @@ to be edited offline without internet connection and to allow for the charts to
 be updated when you user has completed the amendments they require and are back
 online.
 
+# Things to be aware of #
+
+1. Redmine Issues have a granularity of 1 day, the Pertt Chart does not. It will
+   allow multiple issue per day. So the Pertt Chart may have a shorter end time
+   as I am not changing the way issues work on Redmine, too many other parts of the
+   system could break.
+
+2. Pertt Chart holds it's own start and end dates, this is bad, but the only solution
+   to point 1. (Ok, not the only solution - but the simplest).
+
+3. Pertt Chart ignores all other relations for the issues except the ones it creates.
+   This avoids loops and other things you can do in Redmine and I don't want to write
+   the code to remove these things.
+
 # Status/Things to Do #
 
 The current status of the product is a follows:
