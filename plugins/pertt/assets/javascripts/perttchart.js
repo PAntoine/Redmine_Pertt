@@ -282,6 +282,7 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 		var width = 0;
 		var height = 0;
 		var max_duration = 0;
+		var critical_path = 0;
 
 		/* get the start time */
 		/* TODO: amended flag? */
@@ -327,6 +328,7 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 			if (stream_duration > max_duration)
 			{
 				max_duration = stream_duration;
+				critical_path = index;
 			}
 
 			/* add to the size of the enclosing box */
@@ -344,6 +346,7 @@ function job_calculateBoxSize(context,enclosing_hotspot)
 
 		/* update the duration */
 		this.duration = max_duration;
+		this.critical_path = critical_path;
 
 		/* update the end-time */
 		CalculateEndTime(this);

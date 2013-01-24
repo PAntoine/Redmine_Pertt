@@ -60,7 +60,7 @@ class PerttChart < ActiveRecord::Base
 		duration_hours = changed_job["duration"].to_f / 3600.0
 
 		# don't create issues for the structural jobs/tasks
-		if (changed_job["id"] < 3)
+		if (changed_job["id"] > 2)
 
 			new_issue = Issue.create(	:project_id => project_id,
 										:subject => changed_job["name"],
@@ -177,7 +177,7 @@ class PerttChart < ActiveRecord::Base
 
 				if (job)
 					# check to see if the job is connected linearly (and not to a structural node), if so set it
-					if (job.prev_job > 2)
+					if (job.prev_job > 2 && job.id > 2)
 						puts "connecting " << job.prev_job.to_s << " to " << job.id.to_s
 
 						prev_job = self.pertt_jobs.find_by_index job.prev_job
