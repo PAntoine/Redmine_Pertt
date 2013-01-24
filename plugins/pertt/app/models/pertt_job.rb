@@ -26,20 +26,39 @@ class PerttJob < ActiveRecord::Base
 	# This function will convert a job to a string. It will also product
 	# the list of streams as part of the job.
 	#
-	# NOTE: Three fields start,end,selected should be moved up to the
-	#       chart level. Need to do this after this is working.
-    #
 	# parameter:
 	# 	none
 	#
 	def to_json
 		result = ''
+		
+		if (self.issue_id == 0)
+			name = self.name;
+			job_status = 'complete';
+			description = self.description;
+		else
+			issue = Issue.find_by_id(self.issue_id)
+			status = IssueStatus.find_by_id(issue.status_id)
+			
+			name = issue.name
+			description = issue.description;
+	
+			# get the jobs status from the issue
+			if (status.is_closed)
+				job_status = "complete"
+			elsif (status.name == 'In Progress')
+				job_status = "started"
+			else
+				job_status = "waiting"
+			end
+		end
 
+		# build the JSON string for the issue
 		if self.is_deleted
 			result << "null,"
 		else
 			result <<	'{"id":"'		<< self.index.to_s			<< '",' <<
-						'"name":"'		<< self.name				<< '",' <<
+						'"name":"'		<< name						<< '",' <<
 						'"owner":'		<< self.owner.to_s			<< ','	<<
 						'"prev_job":'	<< self.prev_job.to_s		<< ','	<<
 						'"next_job":'	<< self.next_job.to_s		<< ','	<<
@@ -48,7 +67,8 @@ class PerttJob < ActiveRecord::Base
 						'"end_date":'	<< self.end_time.to_s		<< ','	<<
 						'"start_date":'	<< self.start_time.to_s		<< ','	<<
 						'"duration":'	<< self.duration_secs.to_s	<< ','	<<
-						'"description":"'<< self.description		<< '", "streams":['
+						'"job_status":'	<< job_status				<< ','	<<
+						'"description":"'<< description				<< '", "streams":['
 
 			# output the stream
 			result << self.pertt_links.pluck(:job_id).join(',') << ']},'
