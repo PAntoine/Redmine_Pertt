@@ -484,7 +484,6 @@ function job_addNextJob(job)
 
 	/* now mark then as amended */
 	this.amended = true;
-
 }
 
 function job_addPrevJob(job)
@@ -750,9 +749,62 @@ function job_getNextJob()
 	return this.next_job;
 }
 
+function job_cutJob()
+{
+	if (this.prev_job != 0)
+	{
+		/* this is an easy delete, just remove it from the linked list */
+		job_list[this.prev_job].next_job = this.next_job;
+		job_list[this.prev_job].amended = true;
+
+		if (job_list[this.next_job] != 0)
+		{
+			job_list[this.next_job].prev_job = this.prev_job;
+			job_list[this.next_job].amended = true;
+		}
+	}
+	else
+	{	
+		/* painful delete have to play with the owner */
+		for (var index=0; index < job_list[this.owner].streams.length; index++)
+		{
+			if (job_list[this.owner].streams[index] == this.id)
+			{
+				/* don't play with the hotspots - let the paint do that */
+				if (this.next_job == 0)
+				{
+					/* ok, we have found the one we want - only item - just remove the stream */
+					job_list[this.owner].streams.splice(index,1);
+					job_list[this.owner].hotspots.splice(index,1);
+					job_list[this.owner].amended = true;
+				}
+				else
+				{
+					/* just remove the first job in the list */
+					job_list[this.owner].streams[index] = this.next_job;
+					job_list[this.next_job].prev_job  = 0;
+					job_list[this.next_job].first_job = true;
+
+					job_list[this.owner].amended = true;
+					job_list[this.next_job].amended = true;
+				}
+				break;
+			}
+		}
+
+		if (job_list[this.owner].streams.length == 0)
+		{
+			/* ok, we are now a terminal job */
+			job_list[this.owner].terminal = true;
+			job_list[this.owner].hotspot.active = true;
+		}
+	}
+}
+
 function job_addMethods(job)
 {
 	job.paint				= job_paint;
+	job.cutJob				= job_cutJob;
 	job.addSubJob			= job_addSubJob;
 	job.addHotSpot			= job_addHotSpot;
 	job.addNextJob			= job_addNextJob;
@@ -817,54 +869,7 @@ function deleteJob(job)
 		chart_current_job = job.findPreviousJob();
 	}
 
-	if (job.prev_job != 0)
-	{
-		/* this is an easy delete, just remove it from the linked list */
-		job_list[job.prev_job].next_job = job.next_job;
-		job_list[job.prev_job].amended = true;
-
-		if (job_list[job.next_job] != 0)
-		{
-			job_list[job.next_job].prev_job = job.prev_job;
-			job_list[job.next_job].amended = true;
-		}
-	}
-	else
-	{	
-		/* painful delete have to play with the owner */
-		for (var index=0; index < job_list[job.owner].streams.length; index++)
-		{
-			if (job_list[job.owner].streams[index] == job.id)
-			{
-				/* don't play with the hotspots - let the paint do that */
-				if (job.next_job == 0)
-				{
-					/* ok, we have found the one we want - only item - just remove the stream */
-					job_list[job.owner].streams.splice(index,1);
-					job_list[job.owner].hotspots.splice(index,1);
-					job_list[job.owner].amended = true;
-				}
-				else
-				{
-					/* just remove the first job in the list */
-					job_list[job.owner].streams[index] = job.next_job;
-					job_list[job.next_job].prev_job  = 0;
-					job_list[job.next_job].first_job = true;
-
-					job_list[job.owner].amended = true;
-					job_list[job.next_job].amended = true;
-				}
-				break;
-			}
-		}
-
-		if (job_list[job.owner].streams.length == 0)
-		{
-			/* ok, we are now a terminal job */
-			job_list[job.owner].terminal = true;
-			job_list[job.owner].hotspot.active = true;
-		}
-	}
+	job.cutJob();
 
 	/* now store the updated chart */
 	StoreChart();
