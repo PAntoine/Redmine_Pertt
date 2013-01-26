@@ -40,7 +40,7 @@ class PerttJob < ActiveRecord::Base
 			issue = Issue.find_by_id(self.issue_id)
 			status = IssueStatus.find_by_id(issue.status_id)
 			
-			name = issue.name
+			name = issue.subject
 			description = issue.description;
 	
 			# get the jobs status from the issue
@@ -67,7 +67,7 @@ class PerttJob < ActiveRecord::Base
 						'"end_date":'	<< self.end_time.to_s		<< ','	<<
 						'"start_date":'	<< self.start_time.to_s		<< ','	<<
 						'"duration":'	<< self.duration_secs.to_s	<< ','	<<
-						'"job_status":'	<< job_status				<< ','	<<
+						'"job_status":"'<< job_status				<< '",'	<<
 						'"description":"'<< description				<< '", "streams":['
 
 			# output the stream

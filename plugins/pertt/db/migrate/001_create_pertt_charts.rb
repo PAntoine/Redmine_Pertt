@@ -19,12 +19,11 @@
 class CreatePerttCharts < ActiveRecord::Migration
   def up
     create_table :pertt_charts, :force => true do |t|
-		t.integer	:id
 		t.integer	:project_id,	:null => false
 		t.integer	:selected,		:null => false, :default => 1
 		t.integer	:secs_per_day,	:null => false, :default => 27000
 		t.integer	:days_per_week,	:null => false, :default => 5
-		t.integer	:first_week_day,:null => false, :default => 0
+		t.integer	:first_week_day,:null => false, :default => 1
 		t.integer	:tracker_id,	:null => false, :default => 2
 		t.integer	:issue_id
 		t.string	:name, 			:null => false
@@ -34,7 +33,6 @@ class CreatePerttCharts < ActiveRecord::Migration
 	add_index "pertt_charts", ["id"], :name => "index_pertt_charts_on_id"
 
 	create_table :pertt_jobs, :force => true do |t|
-		t.integer	:id
 		t.integer	:index,			:null => false
 		t.integer	:pertt_chart_id,:null => false
 		t.integer	:owner,			:null => false
@@ -55,7 +53,6 @@ class CreatePerttCharts < ActiveRecord::Migration
 	add_index "pertt_jobs", ["pertt_chart_id","index"], :name => "index_pertt_jobs_on_pertt_chart_id_and_index"
 
 	create_table :pertt_links, :force => true do |t|
-		t.integer	:id
 		t.integer	:pertt_job_id,	:null => false
 		t.integer	:job_id,		:null => false
 	end

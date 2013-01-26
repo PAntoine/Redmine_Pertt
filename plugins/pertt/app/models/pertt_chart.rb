@@ -62,6 +62,8 @@ class PerttChart < ActiveRecord::Base
 		# don't create issues for the structural jobs/tasks
 		if (changed_job["id"] > 2)
 
+			puts "create job id:" << changed_job["id"].to_s
+
 			new_issue = Issue.create(	:project_id => project_id,
 										:subject => changed_job["name"],
 										:description => changed_job["description"],
@@ -74,6 +76,7 @@ class PerttChart < ActiveRecord::Base
 
 			new_issue_id = new_issue.id
 		else
+			puts "not create job id:" << changed_job["id"].to_s
 			new_issue_id = 0
 		end
 
@@ -177,8 +180,8 @@ class PerttChart < ActiveRecord::Base
 
 				if (job)
 					# check to see if the job is connected linearly (and not to a structural node), if so set it
-					if (job.prev_job > 2 && job.id > 2)
-						puts "connecting " << job.prev_job.to_s << " to " << job.id.to_s
+					if (job.prev_job > 2 && job.index > 2)
+						puts "connecting " << job.prev_job.to_s << " to " << job.index.to_s
 
 						prev_job = self.pertt_jobs.find_by_index job.prev_job
 
@@ -198,6 +201,8 @@ class PerttChart < ActiveRecord::Base
 					end
 				end
 			end
+
+			puts "exit connect issues"
 		end
 
 		return result

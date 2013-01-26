@@ -1,0 +1,26 @@
+<%= form_for @chart, :url => target_url do |f| %>
+	<div class="box tabular">
+		<%= hidden_field_tag 'project_id', @chart.project_id %>
+		<%= hidden_field_tag 'tracker_id', 2 %>
+		<%= hidden_field_tag 'id', @chart.id %>
+
+		<p><%= f.label :name, 'Name' %> <%= f.text_field :name, :required => true, :size => 60 %></p>
+		<p><%= f.label :description, 'Description' %> <%= f.text_area :description, :cols => 80, :rows => 5 %></p>
+		<p><%= f.label :days_per_week, 'Days Per Week' %> <%= f.number_field :days_per_week, :in => 1...5 %></p>
+		<p><%= f.label :hours_per_day, 'Hours Per Day' %> <%= f.number_field :hours_per_day, :value => (@chart.secs_per_day / (3600.0)).round(2) %></p>
+
+		<fieldset><legend>Start Of Week</legend>
+			<% [ 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' ].each_with_index do |start_day_of_week,index| %>
+				<label class="floating">
+				<%= radio_button_tag 'start_day_of_week', index , index == @chart.first_week_day %>
+				<%= l_or_humanize(start_day_of_week) %>
+				</label>
+			<% end %>
+		</fieldset>
+	</div>
+
+	<div class="actions">
+		<%= f.submit submit_name %>
+	</div>
+
+<% end %>

@@ -54,11 +54,17 @@ class PerttController < ApplicationController
 		if request.put?
 			input_hash = params[:pertt_chart]
 
-			chart = PerttChart.find(input_hash["id"])
+			chart = PerttChart.find(params[:id])
 
 			if (chart)
 				chart.name = input_hash["name"]
 				chart.description = input_hash["description"]
+				chart.days_per_week = input_hash["days_per_week"]
+				chart.secs_per_day  = input_hash["hours_per_day"].to_f * (3600)
+				chart.first_week_day = params["start_day_of_week"].to_i
+
+				puts "sec: " << chart.secs_per_day.to_s << " hours: " << input_hash["hours_per_day"]
+
 				if chart.save
 					flash[:notice] = 'Saved OK'
 				else
@@ -81,6 +87,7 @@ class PerttController < ApplicationController
 		if (chart)
 			@chart_name = chart.name
 			@canvas_id = chart.name.gsub(" ", "_")
+			@chart_current_job = chart.selected
 			@chart_secs_per_day = chart.secs_per_day
 			@chart_days_per_week = chart.days_per_week
 			@chart_first_week_day = chart.first_week_day
@@ -132,6 +139,7 @@ class PerttController < ApplicationController
 
 				# Update the chart ok
 				session[:last_saved] = chart.name.gsub(" ", "_")
+				redirect_to :action => 'index', :project_id => @project.id
 			else
 				flash[:alert] = 'Could not find the chart to update it'
 			end
@@ -149,6 +157,7 @@ class PerttController < ApplicationController
 	end
 
 	def find_chart
+		puts "id ---> " << params[:id]
 		@chart = PerttChart.find(params[:id])
 		@project = Project.find(@chart.project_id)
 	end
