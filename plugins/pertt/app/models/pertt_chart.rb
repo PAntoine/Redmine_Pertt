@@ -54,15 +54,11 @@ class PerttChart < ActiveRecord::Base
 			parent_issue = self.pertt_jobs.find_by_index(changed_job["owner"]).issue_id
 		end
 
-		puts "id: " << changed_job["id"].to_s << " start date utc: " << Time.at(changed_job["start_date"]).utc.to_date.to_s << " end_date: " << Time.at(changed_job["end_date"]).utc.to_date.to_s
-
 		# create the jobs issue
 		duration_hours = changed_job["duration"].to_f / 3600.0
 
 		# don't create issues for the structural jobs/tasks
 		if (changed_job["id"] > 2)
-
-			puts "create job id:" << changed_job["id"].to_s
 
 			new_issue = Issue.create(	:project_id => project_id,
 										:subject => changed_job["name"],
@@ -76,7 +72,6 @@ class PerttChart < ActiveRecord::Base
 
 			new_issue_id = new_issue.id
 		else
-			puts "not create job id:" << changed_job["id"].to_s
 			new_issue_id = 0
 		end
 
@@ -93,9 +88,6 @@ class PerttChart < ActiveRecord::Base
 											:is_first_job => changed_job["first_job"],
 											:description => changed_job["description"],
 											:issue_id => new_issue_id
-
-		# New job as been added to the chart add it here
-		puts changed_job["streams"]
 
 		# If, the job was created and there are streams with the job 
 		if (new_job && changed_job["streams"].length > 0)
@@ -168,12 +160,8 @@ class PerttChart < ActiveRecord::Base
 	def connect_issues ( update_chart_data )
 		result = ''
 
-		puts "in connect issues"
-
 		# update the amended jobs
 		update_chart_data['change_list'].each do | changed_job |
-
-			puts "item " << changed_job.inspect
 
 			if changed_job["created"] || changed_job["amended"]
 				job = self.pertt_jobs.find_by_index changed_job['id']
@@ -181,11 +169,8 @@ class PerttChart < ActiveRecord::Base
 				if (job)
 					# check to see if the job is connected linearly (and not to a structural node), if so set it
 					if (job.prev_job > 2 && job.index > 2)
-						puts "connecting " << job.prev_job.to_s << " to " << job.index.to_s
 
 						prev_job = self.pertt_jobs.find_by_index job.prev_job
-
-						puts "issue id from:" << prev_job.issue_id.to_s << " to: " << job.issue_id.to_s
 
 						if (job.prev_rel_id != 0)
 							IssueRelation.find(job.prev_rel_id).destroy()
@@ -201,8 +186,6 @@ class PerttChart < ActiveRecord::Base
 					end
 				end
 			end
-
-			puts "exit connect issues"
 		end
 
 		return result

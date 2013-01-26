@@ -63,8 +63,6 @@ class PerttController < ApplicationController
 				chart.secs_per_day  = input_hash["hours_per_day"].to_f * (3600)
 				chart.first_week_day = params["start_day_of_week"].to_i
 
-				puts "sec: " << chart.secs_per_day.to_s << " hours: " << input_hash["hours_per_day"]
-
 				if chart.save
 					flash[:notice] = 'Saved OK'
 				else
@@ -157,7 +155,6 @@ class PerttController < ApplicationController
 	end
 
 	def find_chart
-		puts "id ---> " << params[:id]
 		@chart = PerttChart.find(params[:id])
 		@project = Project.find(@chart.project_id)
 	end

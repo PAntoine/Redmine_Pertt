@@ -111,13 +111,7 @@ class PerttJob < ActiveRecord::Base
 	
 		# add the new ones
 		input_hash["streams"].each do | job_id |
-			puts "adding job: " << job_id.to_s
-
 			link = self.pertt_links.create :job_id => job_id
-
-			if link.nil?
-				puts "failed to create the link"
-			end
 		end
 
 		# save the changes
