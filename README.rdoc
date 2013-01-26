@@ -28,37 +28,46 @@ id of the task. This will allow for a consistent named branches to be create fro
 one single source. There are some issues with how this is going to work, that have
 not been worked through yet.
 
+Here is an example of a Pertt Chart:
+
+![Pertt Chartt Example](docs/pertt_chart_drawing_page.png)
+
 == Things to be aware of
 
- (1) Redmine Issues have a granularity of 1 day, the Pertt Chart does not. It will
-     allow multiple issue per day. So the Pertt Chart may have a shorter end time
-     as I am not changing the way issues work on Redmine, too many other parts of the
-     system could break.
+1. Redmine Issues have a granularity of 1 day, the Pertt Chart does not. It will
+   allow multiple issue per day. So the Pertt Chart may have a shorter end time
+   as I am not changing the way issues work on Redmine, too many other parts of the
+   system could break.
 
- (2) Pertt Chart holds it's own start and end dates, this is bad, but the only solution
-     to point 1. (Ok, not the only solution - but the simplest).
+2. Pertt Chart holds it's own start and end dates, this is bad, but the only solution
+   to point 1. (Ok, not the only solution - but the simplest).
 
- (3) Pertt Chart ignores all other relations for the issues except the ones it creates.
-     This avoids loops and other things you can do in Redmine and I don't want to write
-     the code to remove these things.
+3. Pertt Chart ignores all other relations for the issues except the ones it creates.
+   This avoids loops and other things you can do in Redmine and I don't want to write
+   the code to remove these things.
 
 == Status/Things to Do
 
 The current status of the product is a follows:
 
- (1) The basic chart drawing and navigation is complete.
-     Thought the structure of the job/task items may change.
+1. The basic chart drawing and navigation is complete.
+   Thought the structure of the job/task items may change.
 
- (2) Basic Drawing and Rails Integrated
-     The drawing is in the Rails/Redmine database and is served. The basic single user
-     localStorage works. The muti-user case and the amended elsewhere cases have not
-     been handled yet. So if you have not saved a drawing and another user amends it
-	 there is going to be problems. I need to think about how this is handled. The easy
-	 answer if you think another user is going to amend, save or discard the chart.
+2. Basic Drawing and Rails Integrated
+   The drawing is in the Rails/Redmine database and is served. The basic single user
+   localStorage works. The muti-user case and the amended elsewhere cases have not
+   been handled yet. So if you have not saved a drawing and another user amends it
+   there is going to be problems. I need to think about how this is handled. The easy
+   answer if you think another user is going to amend, save or discard the chart.
 
- (3) Integration with the scm (git-only first) has not started.
+3. Integration with the scm (git-only first) has not started.
 
- (4) Change basic Javascript popup to use Redmine/Rails Modal popup - consistency of style.
+4. Change basic Javascript popup to use Redmine/Rails Modal popup - consistency of style.
+
+5. Transactions
+   This plugin does a lot of updates without using a transaction. This is obviously
+   wrong. This will have to be fixed. (I know it's probably a one-liner but need to get
+   all the rest working first).
 
 == Licence and copyright
                     Copyright (c) 2012-2013  Peter Antoine

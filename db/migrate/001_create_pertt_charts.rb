@@ -49,7 +49,7 @@ class CreatePerttCharts < ActiveRecord::Migration
 		t.string	:name,			:null => false
 		t.string	:description
 	end
-	
+	add_index "pertt_jobs", ["index"], :name => "index_pertt_jobs_on_index"
 	add_index "pertt_jobs", ["pertt_chart_id","index"], :name => "index_pertt_jobs_on_pertt_chart_id_and_index"
 
 	create_table :pertt_links, :force => true do |t|

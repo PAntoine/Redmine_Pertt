@@ -19,6 +19,8 @@ class PerttChart < ActiveRecord::Base
 	has_many :pertt_jobs, :dependent => :destroy
 	validates_presence_of	:name, :project_id
 	validates_uniqueness_of	:name, :case_sensitive => false
+	validates_inclusion_of	:days_per_week, :in => 1..7, :message => "must have 1 to 7 days in a week"
+	validates_inclusion_of	:first_week_day, :in => 0..6, :message => "must be 0=Sunday to 6=Saturday"
 
 	unloadable
 
@@ -173,7 +175,10 @@ class PerttChart < ActiveRecord::Base
 						prev_job = self.pertt_jobs.find_by_index job.prev_job
 
 						if (job.prev_rel_id != 0)
-							IssueRelation.find(job.prev_rel_id).destroy()
+							relation = IssueRelation.find_by_id(job.prev_rel_id)
+							if (relation != nil)
+								relation.destroy()
+							end
 							job.prev_rel_id = 0;
 						end
 

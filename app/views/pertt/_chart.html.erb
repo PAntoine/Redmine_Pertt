@@ -6,7 +6,7 @@
 
 		<p><%= f.label :name, 'Name' %> <%= f.text_field :name, :required => true, :size => 60 %></p>
 		<p><%= f.label :description, 'Description' %> <%= f.text_area :description, :cols => 80, :rows => 5 %></p>
-		<p><%= f.label :days_per_week, 'Days Per Week' %> <%= f.number_field :days_per_week, :in => 1...5 %></p>
+		<p><%= f.label :days_per_week, 'Days Per Week' %> <%= f.number_field :days_per_week, :in => 1..7, :step => 1 %></p>
 		<p><%= f.label :hours_per_day, 'Hours Per Day' %> <%= f.number_field :hours_per_day, :value => (@chart.secs_per_day / (3600.0)).round(2) %></p>
 
 		<fieldset><legend>Start Of Week</legend>

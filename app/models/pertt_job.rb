@@ -99,9 +99,22 @@ class PerttJob < ActiveRecord::Base
 		self.is_terminal = input_hash["terminal"]
 		self.is_first_job = input_hash["first_job"]
 		self.end_time = input_hash["end_date"]
-		self.start_time	= input_hash["end_date"]
+		self.start_time	= input_hash["start_date"]
 		self.duration_secs = input_hash["duration"]
 		self.description = input_hash["description"]
+
+		# need to update the issues that are attached to the job
+		if (self.issue_id != 0 && issue = Issue.find(self.issue_id))
+
+			# update the job issue
+			issue.subject			= input_hash["name"]
+			issue.description		= input_hash["description"]
+			issue.start_date		= Time.at(input_hash["start_date"]).utc.to_date
+			issue.due_date			= Time.at(input_hash["end_date"]).utc.to_date
+			issue.estimated_hours	= (input_hash["duration"].to_f / 3600.0).round(2)
+			issue.save
+#			issue.parent_issue_id	= parent_issue
+		end
 
 		# Incase a deleted object is being reused
 		self.is_deleted = false
@@ -128,6 +141,25 @@ class PerttJob < ActiveRecord::Base
 	#
 	def delete_job
 		self.is_deleted = true
+
+	# close the associated issue
+		if (self.issue_id != 0)
+			issue = Issue.find_by_id(self.issue_id)
+
+			# delete all the relationships
+			IssueRelation.find_all_by_issue_from_id(self.issue_id).each do | relation |
+				relation.destroy()
+			end
+			IssueRelation.find_all_by_issue_to_id(self.issue_id).each do | relation |
+				relation.destroy()
+			end
+
+			# now mark the relation as closed 
+			issue.status_id = IssueStatus.find_by_name("Closed").id
+			issue.parent_issue_id = nil
+			issue.save
+		end
+
 		self.save
 	end
 end

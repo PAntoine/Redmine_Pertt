@@ -33,7 +33,17 @@ class PerttController < ApplicationController
 
 	def create
 		if request.post?
-			@chart = PerttChart.new(params[:pertt_chart])
+			new_job = params[:pertt_chart]
+
+			@chart = PerttChart.new(:project_id			=> params["project_id"],	
+									:selected			=> 1,		
+									:secs_per_day		=> new_job["hours_per_day"].to_f * (3600),	
+									:days_per_week		=> new_job["days_per_week"],	
+									:first_week_day		=> params["start_day_of_week"].to_i,
+									:tracker_id			=> params["tracker_id"],	
+									:name				=> new_job["name"], 			
+									:description		=> new_job["description"])
+
 			@chart.project_id = @project.id
 
 			# create the root issue for the pertt chart
@@ -44,8 +54,15 @@ class PerttController < ApplicationController
 				flash[:notice] = 'Saved Ok'
 				redirect_to :action => 'index', :project_id => @project.id
 			else
-				flash[:alert] = 'Did not save'
-				redirect_to :action => 'new', :project_id => @project.id
+				flash[:error] = 'Failed to Save'
+
+				if @chart.errors.any?
+					@chart.errors.full_messages.each do |msg|
+						flash[:error] << ': ' << msg << '<br>'
+					end
+				end
+
+				render :action => 'new', :project_id => @project.id
 			end
 		end
 	end
@@ -65,15 +82,21 @@ class PerttController < ApplicationController
 
 				if chart.save
 					flash[:notice] = 'Saved OK'
+					redirect_to :action => 'index', :project_id => @project.id
 				else
-					flash[:alert] = 'Could not save changes'
+					flash[:error] = 'Failed to Save'
+
+					if chart.errors.any?
+						chart.errors.full_messages.each do |msg|
+							flash[:error] << ': ' << msg << '<br>'
+						end
+					end
+					render :action => 'edit', :project_id => @project.id
 				end
 			else
 				flash[:alert] = 'Could not find the chart'
+				redirect_to :action => 'index', :project_id => @project.id
 			end
-
-			# Ok, we have saved it
-			redirect_to :action => 'index', :project_id => @project.id
 		else
 			@chart = PerttChart.find(params[:id])
 		end

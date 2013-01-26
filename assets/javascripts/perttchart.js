@@ -135,7 +135,8 @@ function SetWeek(start_day,week_days,day_length_secs)
  *--------------------------------------------------------------------------------*/
 function CalculateEndTime(job)
 {
-	var old_date = job.start_date;
+	var old_end_date = job.end_date;
+	var old_start_date = job.start_date;
 
 	/* get the start time */
 	if (job.prev_job != 0)
@@ -145,11 +146,6 @@ function CalculateEndTime(job)
 	else
 	{
 		job.start_date = job_list[job.owner].start_date;
-	}
-
-	if (old_date != job.start_date)
-	{
-		job.amended = true;
 	}
 
 	/* check that start_date does not need to rollover */
@@ -194,6 +190,12 @@ function CalculateEndTime(job)
 
 	/* add the duration in working time to the start time */
 	job.end_date = day_start + ((num_days + (weekends * weekend_length)) * seconds_in_day) + remains;
+
+	/* do we need to update the server for the job changes */
+	if (old_start_date != job.start_date || old_end_date != job.end_date)
+	{
+		job.amended = true;
+	}
 }
 
 /*--------------------------------------------------------------------------------*
