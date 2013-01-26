@@ -30,6 +30,8 @@ class CreatePerttCharts < ActiveRecord::Migration
 		t.string	:name, 			:null => false
 		t.string	:description,	:null => false
     end
+	
+	add_index "pertt_charts", ["id"], :name => "index_pertt_charts_on_id"
 
 	create_table :pertt_jobs, :force => true do |t|
 		t.integer	:id
@@ -49,12 +51,17 @@ class CreatePerttCharts < ActiveRecord::Migration
 		t.string	:name,			:null => false
 		t.string	:description
 	end
+	
+	add_index "pertt_jobs", ["pertt_chart_id","index"], :name => "index_pertt_jobs_on_pertt_chart_id_and_index"
 
 	create_table :pertt_links, :force => true do |t|
 		t.integer	:id
 		t.integer	:pertt_job_id,	:null => false
 		t.integer	:job_id,		:null => false
 	end
+
+	add_index "pertt_links", ["job_id"], :name => "index_pertt_links_on_job_id"
+
   end
 
   def down
