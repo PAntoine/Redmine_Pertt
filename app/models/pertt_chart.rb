@@ -77,6 +77,8 @@ class PerttChart < ActiveRecord::Base
 			new_issue_id = 0
 		end
 
+		logger.error "new job to be created:" << changed_job.inspect
+
 		# create the new job
 		new_job = self.pertt_jobs.create 	:name => changed_job["name"],
 											:index => changed_job["id"],
@@ -90,6 +92,8 @@ class PerttChart < ActiveRecord::Base
 											:is_first_job => changed_job["first_job"],
 											:description => changed_job["description"],
 											:issue_id => new_issue_id
+
+		logger.error "new actual job:" << new_job.inspect
 
 		# If, the job was created and there are streams with the job 
 		if (new_job && changed_job["streams"].length > 0)
