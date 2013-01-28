@@ -41,8 +41,8 @@ class CreatePerttCharts < ActiveRecord::Migration
 		t.integer	:duration_secs,	:null => false
 		t.integer	:issue_id,		:null => false
 		t.integer	:prev_rel_id,	:default => 0
-		t.datetime	:start_time,	:null => false
-		t.datetime	:end_time,		:null => false
+		t.integer	:start_time,	:null => false
+		t.integer	:end_time,		:null => false
 		t.boolean	:is_deleted,	:null => false, :default => false
 		t.boolean	:is_terminal
 		t.boolean	:is_first_job,	:default => false

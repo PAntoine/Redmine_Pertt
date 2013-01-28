@@ -94,6 +94,8 @@ class PerttChart < ActiveRecord::Base
 											:issue_id => new_issue_id
 
 		logger.error "new actual job:" << new_job.inspect
+		logger.error "start_time:" << new_job.start_time.to_s
+		logger.error "end_time:" << new_job.end_time.to_s
 
 		# If, the job was created and there are streams with the job 
 		if (new_job && changed_job["streams"].length > 0)
